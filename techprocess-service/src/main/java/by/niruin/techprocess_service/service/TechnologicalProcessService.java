@@ -7,6 +7,7 @@ import by.niruin.techprocess_service.exception.EntityAlreadyExistedException;
 import by.niruin.techprocess_service.exception.EntityNotFoundException;
 import by.niruin.techprocess_service.repository.TechnologicalProcessRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -19,6 +20,7 @@ public class TechnologicalProcessService {
         this.repository = repository;
     }
 
+    @Transactional
     public TechnologicalProcess save(TechnologicalProcess technologicalProcess) {
         repository.findByPartNumberAndTypeAndWorkshopCode(technologicalProcess.getPartNumber(),
                         technologicalProcess.getType(), technologicalProcess.getWorkshopCode())
@@ -39,6 +41,7 @@ public class TechnologicalProcessService {
         return repository.save(technologicalProcess);
     }
 
+    @Transactional
     public TechnologicalProcess update(TechnologicalProcess technologicalProcess) {
         TechnologicalProcess existing =
                 repository.findFirstByArchiveNumberOrderByRevisionDesc(technologicalProcess.getArchiveNumber())
@@ -90,7 +93,7 @@ public class TechnologicalProcessService {
                             || existed.getStatus() == TechnologicalProcessStatus.PRODUCTION) {
                         throw new RuntimeException(); // todo кастомное исключение
                     }
-
+//todo transaction outbox для кафки и сохранения
                     existed.setStatus(TechnologicalProcessStatus.CANCELLED);
 
                     repository.save(existed);
