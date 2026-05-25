@@ -4,6 +4,7 @@ public class Material {
     private String position;
     private String name;
     private String supplierCode;
+    private String standard;
     private MaterialUnit unit;
     private Integer rationingUnit;
     private Double consumptionRate;
@@ -30,6 +31,14 @@ public class Material {
 
     public void setSupplierCode(String supplierCode) {
         this.supplierCode = supplierCode;
+    }
+
+    public String getStandard() {
+        return standard;
+    }
+
+    public void setStandard(String standard) {
+        this.standard = standard;
     }
 
     public MaterialUnit getUnit() {

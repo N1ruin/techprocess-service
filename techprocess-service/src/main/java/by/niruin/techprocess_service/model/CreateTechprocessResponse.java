@@ -1,6 +1,6 @@
 package by.niruin.techprocess_service.model;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 public record CreateTechprocessResponse(String id,
                                         String name,
@@ -10,6 +10,7 @@ public record CreateTechprocessResponse(String id,
                                         String type,
                                         String status,
                                         Integer revision,
-                                        LocalDateTime created,
-                                        LocalDateTime updated) {
+                                        String workType,
+                                        Instant createdDate,
+                                        Instant updatedDate) {
 }

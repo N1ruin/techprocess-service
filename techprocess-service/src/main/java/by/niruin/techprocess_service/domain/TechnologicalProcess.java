@@ -1,11 +1,12 @@
 package by.niruin.techprocess_service.domain;
 
+import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.mongodb.core.index.CompoundIndex;
-import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -19,14 +20,16 @@ public class TechnologicalProcess {
     private String id;
     private String name;
     private String partNumber;
-    @Indexed(unique = true)
     private String archiveNumber;
     private String workshopCode;
+    private String workType;
     private TechnologicalProcessOrganizationType type;
     private TechnologicalProcessStatus status;
     private Integer revision;
-    private LocalDateTime created;
-    private LocalDateTime updated;
+    @CreatedDate
+    private Instant createdDate;
+    @LastModifiedDate
+    private Instant updatedDate;
     private Integer totalSheets;
     private List<TechnologicalOperation> technologicalOperations = new ArrayList<>();
     private List<SketchCard> sketches = new ArrayList<>();
@@ -95,20 +98,20 @@ public class TechnologicalProcess {
         this.revision = revision;
     }
 
-    public LocalDateTime getCreated() {
-        return created;
+    public Instant getCreatedDate() {
+        return createdDate;
     }
 
-    public void setCreated(LocalDateTime created) {
-        this.created = created;
+    public void setCreatedDate(Instant createdDate) {
+        this.createdDate = createdDate;
     }
 
-    public LocalDateTime getUpdated() {
-        return updated;
+    public Instant getUpdatedDate() {
+        return updatedDate;
     }
 
-    public void setUpdated(LocalDateTime updated) {
-        this.updated = updated;
+    public void setUpdatedDate(Instant updatedDate) {
+        this.updatedDate = updatedDate;
     }
 
     public Integer getTotalSheets() {
@@ -117,6 +120,14 @@ public class TechnologicalProcess {
 
     public void setTotalSheets(Integer totalSheets) {
         this.totalSheets = totalSheets;
+    }
+
+    public String getWorkType() {
+        return workType;
+    }
+
+    public void setWorkType(String workType) {
+        this.workType = workType;
     }
 
     public List<TechnologicalOperation> getTechnologicalOperations() {

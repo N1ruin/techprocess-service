@@ -16,6 +16,8 @@ public class TechnologicalProcessRequestConverter implements Converter<CreateTec
         process.setArchiveNumber(request.archiveNumber());
         process.setWorkshopCode(request.workshopCode());
         process.setType(TechnologicalProcessOrganizationType.valueOf(request.type()));
+        process.setWorkType(request.workType());
+
         return process;
     }
 }

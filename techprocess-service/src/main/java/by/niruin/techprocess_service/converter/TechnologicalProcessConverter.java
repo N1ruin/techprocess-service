@@ -9,7 +9,8 @@ import org.springframework.stereotype.Component;
 public class TechnologicalProcessConverter implements Converter<TechnologicalProcess, CreateTechprocessResponse> {
     @Override
     public CreateTechprocessResponse convert(TechnologicalProcess process) {
-        return new CreateTechprocessResponse(process.getId(),
+        return new CreateTechprocessResponse(
+                process.getId(),
                 process.getName(),
                 process.getPartNumber(),
                 process.getArchiveNumber(),
@@ -17,7 +18,8 @@ public class TechnologicalProcessConverter implements Converter<TechnologicalPro
                 process.getType().name(),
                 process.getStatus().name(),
                 process.getRevision(),
-                process.getCreated(),
-                process.getUpdated());
+                process.getWorkType(),
+                process.getCreatedDate(),
+                process.getUpdatedDate());
     }
 }

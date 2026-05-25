@@ -3,4 +3,5 @@ spring:
     name: techprocess-service
   data:
     mongodb:
-      uri: mongodb://localhost:27017/techprocess-service
+      uri: mongodb://localhost:27017/techprocess-service?authSource=admin
+      auto-index-creation: true

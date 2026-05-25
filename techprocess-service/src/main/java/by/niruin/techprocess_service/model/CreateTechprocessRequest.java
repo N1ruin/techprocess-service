@@ -5,7 +5,7 @@ import jakarta.validation.constraints.Pattern;
 
 public record CreateTechprocessRequest(
         @NotNull
-        @Pattern(regexp = "^[А-Яа-я0-9\\s]+$")
+        @Pattern(regexp = "^[А-Яа-яёЁ0-9\\s]+$")
         String name,
         @Pattern(regexp = "^[А-Я0-9.-]+-\\d{7}(-[A-Z0-9А-Я]+)?$", message = "Неверный формат номера детали/узла")
         String partNumber,
@@ -17,5 +17,8 @@ public record CreateTechprocessRequest(
         String workshopCode,
         @NotNull
         @Pattern(regexp = "^(SINGLE|TYPICAL|GROUP)$", message = "Некорректный тип технологического процесса")
-        String type) {
+        String type,
+        @NotNull
+        @Pattern(regexp = "^[а-яё]+$", message = "Некорректный вид работ")
+        String workType) {
 }
