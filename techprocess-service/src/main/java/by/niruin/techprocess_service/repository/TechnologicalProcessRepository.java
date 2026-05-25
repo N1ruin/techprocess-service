@@ -1,8 +1,8 @@
 package by.niruin.techprocess_service.repository;
 
 import by.niruin.techprocess_service.domain.TechnologicalProcess;
-import by.niruin.techprocess_service.domain.TechnologicalProcessOrganizationType;
-import by.niruin.techprocess_service.domain.TechnologicalProcessStatus;
+import by.niruin.techprocess_service.domain.enums.TechnologicalProcessOrganizationType;
+import by.niruin.techprocess_service.domain.enums.TechnologicalProcessStatus;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
 
