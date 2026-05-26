@@ -1,6 +1,8 @@
 package by.niruin.techprocess_service.domain;
 
-public class Product {
+import by.niruin.techprocess_service.domain.enums.MaterialUnit;
+
+public class Part {
     private String position;
     private String name;
     private String number;

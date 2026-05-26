@@ -1,4 +1,4 @@
-package by.niruin.techprocess_service.domain;
+package by.niruin.techprocess_service.domain.enums;
 
 public enum MaterialUnit {
     LITER,

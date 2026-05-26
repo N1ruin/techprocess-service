@@ -1,8 +1,12 @@
 package by.niruin.techprocess_service.domain;
 
-public class Material {
+import by.niruin.techprocess_service.domain.enums.MaterialUnit;
+
+public class MaterialReference {
     private String position;
     private String name;
+    private boolean isFromLibrary;
+
     private String supplierCode;
     private String standard;
     private MaterialUnit unit;
@@ -65,5 +69,11 @@ public class Material {
         this.consumptionRate = consumptionRate;
     }
 
+    public boolean isFromLibrary() {
+        return isFromLibrary;
+    }
 
+    public void setFromLibrary(boolean fromLibrary) {
+        isFromLibrary = fromLibrary;
+    }
 }
