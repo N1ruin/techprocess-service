@@ -12,11 +12,12 @@ import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
 @Document(collection = "technological_processes")
-@CompoundIndex(def = "{'workType': 1, 'archiveNumber': 1}", unique = true)
+@CompoundIndex(def = "{'workType': 1, 'archiveNumber': 1, 'organizationType' : 1}", unique = true)
 public class TechnologicalProcess {
     @Id
     private String id;
@@ -24,13 +25,18 @@ public class TechnologicalProcess {
     private String partName;
     private String archiveNumber;
     private String developerLastName;
+    private String developerFirstName;
+    private String developerFatherName;
+    private String reviewerFirstName;
     private String reviewerLastName;
+    private String reviewerFatherName;
     private String workshopCode;
     private TechnologicalProcessOrganizationType organizationType;
     private TechnologicalProcessStatus status;
     private TechnologicalProcessWorkType workType;
     private String workName;
     private final List<TechnologicalOperation> operations = new ArrayList<>();
+    private final List<ReviewComment> reviewComments = new ArrayList<>();
     private Integer revision;
     @Transient
     private String fullNumber;
@@ -38,6 +44,7 @@ public class TechnologicalProcess {
     private Instant createdDate;
     @LastModifiedDate
     private Instant updatedDate;
+    private Instant reviewerApprovedDate;
 
     public String getId() {
         return id;
@@ -116,14 +123,6 @@ public class TechnologicalProcess {
         this.archiveNumber = archiveNumber;
     }
 
-    public void setDeveloper(String developerLastName) {
-        this.developerLastName = developerLastName;
-    }
-
-    public void setReviewer(String reviewerLastName) {
-        this.reviewerLastName = reviewerLastName;
-    }
-
     public void setWorkshopCode(String workshopCode) {
         this.workshopCode = workshopCode;
     }
@@ -168,5 +167,63 @@ public class TechnologicalProcess {
 
     public void setFullNumber(String fullNumber) {
         this.fullNumber = fullNumber;
+    }
+
+    public void setDeveloperLastName(String developerLastName) {
+        this.developerLastName = developerLastName;
+    }
+
+    public void setReviewerLastName(String reviewerLastName) {
+        this.reviewerLastName = reviewerLastName;
+    }
+
+    public List<ReviewComment> getReviewComments() {
+        return Collections.unmodifiableList(reviewComments);
+    }
+
+    public void setReviewComments(List<ReviewComment> reviewComments) {
+        Objects.requireNonNull(reviewComments);
+        this.reviewComments.clear();
+        this.reviewComments.addAll(reviewComments);
+    }
+
+    public Instant getReviewerApprovedDate() {
+        return reviewerApprovedDate;
+    }
+
+    public void setReviewerApprovedDate(Instant reviewerApprovedDate) {
+        this.reviewerApprovedDate = reviewerApprovedDate;
+    }
+
+    public String getDeveloperFirstName() {
+        return developerFirstName;
+    }
+
+    public void setDeveloperFirstName(String developerFirstName) {
+        this.developerFirstName = developerFirstName;
+    }
+
+    public String getDeveloperFatherName() {
+        return developerFatherName;
+    }
+
+    public void setDeveloperFatherName(String developerFatherName) {
+        this.developerFatherName = developerFatherName;
+    }
+
+    public String getReviewerFirstName() {
+        return reviewerFirstName;
+    }
+
+    public void setReviewerFirstName(String reviewerFirstName) {
+        this.reviewerFirstName = reviewerFirstName;
+    }
+
+    public String getReviewerFatherName() {
+        return reviewerFatherName;
+    }
+
+    public void setReviewerFatherName(String reviewerFatherName) {
+        this.reviewerFatherName = reviewerFatherName;
     }
 }

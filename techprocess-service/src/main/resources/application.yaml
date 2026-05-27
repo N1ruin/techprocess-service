@@ -5,3 +5,30 @@ spring:
     mongodb:
       uri: mongodb://localhost:27017/techprocess-service?authSource=admin
       auto-index-creation: true
+
+  kafka:
+    bootstrap-servers: localhost:9092
+    producer:
+      retries: 3
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JacksonJsonSerializer
+      properties:
+        spring.json.trusted.packages: '*'
+
+  cache:
+    type: redis
+    redis:
+      time-to-live: 60m
+      cache-null-values: false
+
+logging:
+  level:
+    root: INFO
+
+server:
+  port: 8083
+
+scheduler:
+  outbox:
+    batch-size: 10
+    millis-delay: 5000

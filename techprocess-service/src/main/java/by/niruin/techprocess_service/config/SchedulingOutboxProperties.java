@@ -1,0 +1,25 @@
+package by.niruin.techprocess_service.config;
+
+import org.springframework.boot.context.properties.ConfigurationProperties;
+
+@ConfigurationProperties(prefix = "scheduler.outbox")
+public class SchedulingOutboxProperties {
+    private Integer batchSize;
+    private Integer millisDelay;
+
+    public Integer getBatchSize() {
+        return batchSize;
+    }
+
+    public void setBatchSize(Integer batchSize) {
+        this.batchSize = batchSize;
+    }
+
+    public Integer getMillisDelay() {
+        return millisDelay;
+    }
+
+    public void setMillisDelay(Integer millisDelay) {
+        this.millisDelay = millisDelay;
+    }
+}
