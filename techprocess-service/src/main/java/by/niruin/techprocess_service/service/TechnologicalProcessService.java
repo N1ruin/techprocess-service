@@ -2,10 +2,7 @@ package by.niruin.techprocess_service.service;
 
 import by.niruin.techprocess_service.domain.TechnologicalProcess;
 import by.niruin.techprocess_service.domain.enums.TechnologicalProcessStatus;
-import by.niruin.techprocess_service.exception.EntityAlreadyExistException;
-import by.niruin.techprocess_service.exception.EntityNotFoundException;
-import by.niruin.techprocess_service.exception.TechprocessCancellationException;
-import by.niruin.techprocess_service.exception.TechprocessUpdatingException;
+import by.niruin.techprocess_service.exception.*;
 import by.niruin.techprocess_service.kafka.EventPublisher;
 import by.niruin.techprocess_service.repository.TechnologicalProcessRepository;
 import by.niruin.techprocess_service.security.JwtParser;
@@ -36,6 +33,8 @@ public class TechnologicalProcessService {
 
         fillMetadata(techprocess);
         fillDeveloper(techprocess);
+
+        checkSelfReview(techprocess);
 
         var saved = repository.save(techprocess);
 
@@ -133,7 +132,8 @@ public class TechnologicalProcessService {
         }
     }
 
-    private void checkIsNumberExistInWorkshop(String organizationType, String workType, String archiveNumber, String workshopCode) {
+    private void checkIsNumberExistInWorkshop(String organizationType, String workType, String
+            archiveNumber, String workshopCode) {
         var existing = repository.existsByOrganizationTypeAndWorkTypeAndArchiveNumberAndWorkshopCode(
                 organizationType,
                 workType,
@@ -160,6 +160,14 @@ public class TechnologicalProcessService {
                 techprocess.getWorkshopCode());
     }
 
+    private void checkSelfReview(TechnologicalProcess techprocess) {
+        if (techprocess.getDeveloperFirstName().equals(techprocess.getReviewerFirstName()) &&
+                techprocess.getDeveloperLastName().equals(techprocess.getReviewerLastName()) &&
+                techprocess.getDeveloperFatherName().equals(techprocess.getReviewerFatherName())) {
+            throw new TechprocessCreationException("Нельзя назначить на проверяющего самого себя");
+        }
+    }
+
     private void fillMetadata(TechnologicalProcess techprocess) {
         techprocess.setStatus(TechnologicalProcessStatus.IN_DEVELOPMENT);
         techprocess.setRevision(0);
@@ -176,6 +184,20 @@ public class TechnologicalProcessService {
     }
 
     private void updateFields(TechnologicalProcess existing, TechnologicalProcess newTechprocess) {
-
+            existing.setPartNumber(newTechprocess.getPartNumber());
+            existing.setPartName(newTechprocess.getPartName());
+            existing.setWorkshopCode(newTechprocess.getWorkshopCode());
+            existing.setOrganizationType(newTechprocess.getOrganizationType());
+            existing.setWorkType(newTechprocess.getWorkType());
+            existing.setWorkName(newTechprocess.getWorkName());
+            existing.setReviewerFirstName(newTechprocess.getReviewerFirstName());
+            existing.setReviewerLastName(newTechprocess.getReviewerLastName());
+            existing.setReviewerFatherName(newTechprocess.getReviewerFatherName());
+            existing.setOperations(newTechprocess.getOperations());
+// переделать под проверки номеров. если изменился тип то меняем
+            existing.setFullNumber(fullNumberBuilder.buildFullNumber(
+                    newTechprocess.getOrganizationType(),
+                    newTechprocess.getWorkType(),
+                    newTechprocess.getArchiveNumber()));
     }
 }

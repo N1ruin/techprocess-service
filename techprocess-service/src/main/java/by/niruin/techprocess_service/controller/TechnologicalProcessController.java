@@ -84,4 +84,11 @@ public class TechnologicalProcessController {
 
         return ResponseEntity.ok(response);
     }
+
+    // addTransition
+    //addOperation
+    //sendToReview
+    //approve
+    //returnForRevision
+    //resolve
 }
