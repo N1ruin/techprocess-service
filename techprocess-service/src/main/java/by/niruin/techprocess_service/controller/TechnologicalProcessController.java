@@ -1,6 +1,7 @@
 package by.niruin.techprocess_service.controller;
 
 import by.niruin.techprocess_service.domain.enums.TechnologicalProcessStatus;
+import by.niruin.techprocess_service.mapper.TechnologicalOperationMapper;
 import by.niruin.techprocess_service.mapper.TechnologicalProcessMapper;
 import by.niruin.techprocess_service.model.technological_process.*;
 import by.niruin.techprocess_service.service.TechnologicalProcessService;
@@ -14,15 +15,18 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("api/v1/techprocess-service")
+@RequestMapping("/api/v1/techprocess-service")
 public class TechnologicalProcessController {
     private final TechnologicalProcessMapper technologicalProcessMapper;
     private final TechnologicalProcessService technologicalProcessService;
+    private final TechnologicalOperationMapper technologicalOperationMapper;
 
     public TechnologicalProcessController(TechnologicalProcessMapper technologicalProcessMapper,
-                                          TechnologicalProcessService technologicalProcessService) {
+                                          TechnologicalProcessService technologicalProcessService,
+                                          TechnologicalOperationMapper technologicalOperationMapper) {
         this.technologicalProcessMapper = technologicalProcessMapper;
         this.technologicalProcessService = technologicalProcessService;
+        this.technologicalOperationMapper = technologicalOperationMapper;
     }
 
     @PostMapping("/technological-processes")
@@ -36,8 +40,6 @@ public class TechnologicalProcessController {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(response);
     }
-
-    @PostMapping
 
     @GetMapping("/technological-processes/{full-number}")
     public ResponseEntity<TechnologicalProcessDto> getByNumber(@PathVariable("full-number") String fullNumber,
@@ -83,50 +85,60 @@ public class TechnologicalProcessController {
     }
 
     @PostMapping("/technological-processes/{full-number}/operations")
-    public ResponseEntity<TechnologicalProcessDto> addOperation(@PathVariable String archiveNumber,
-                                                                @Valid @RequestBody AddOperationRequest request) {
+    public ResponseEntity<TechnologicalProcessDto> addOperation(@PathVariable("full-number") String fullNumber,
+                                                                @Valid @RequestBody CreateOperationRequest request) {
+        var operation = technologicalOperationMapper.toOperation(request);
 
-        var result = service.addOperation(archiveNumber, request);
+        var result = technologicalProcessService.addOperation(fullNumber, operation);
 
-        return ResponseEntity.ok(mapper.toDto(result));
+        return ResponseEntity.ok(technologicalProcessMapper.toDto(result));
     }
 
-    @PostMapping("/technological-processes/{full-number}/operations")
-    public ResponseEntity<TechnologicalProcessDto> addTransition(@PathVariable String archiveNumber,
+    @PostMapping("/technological-processes/{full-number}/operations/{number}")
+    public ResponseEntity<TechnologicalProcessDto> addTransition(@PathVariable("full-number") String fullNumber,
+                                                                 @PathVariable("number") String operationNumber,
                                                                  @Valid @RequestBody AddTransitionRequest request) {
 
-        var result = service.addTransition(archiveNumber, request);
+        var result = technologicalProcessService.addTransition(fullNumber, request);
 
-        return ResponseEntity.ok(mapper.toDto(result));
+        return ResponseEntity.ok(technologicalProcessMapper.toDto(result));
     }
 
-    @PostMapping("/technological-processes/{archiveNumber}/send-to-review")
-    public ResponseEntity<Void> sendToReview(@PathVariable String archiveNumber) {
-        var result = service.sendToReview(archiveNumber);
+//    @PostMapping("/technological-processes/{full-number}/send-to-review")
+//    public ResponseEntity<Void> sendToReview(@PathVariable("full-number") String fullNumber) {
+//        var result = technologicalProcessService.sendToReview(fullNumber);
+//
+//        return ResponseEntity.ok()
+//                .build();
+//    }
 
-        return ResponseEntity.ok()
-                .build();
-    }
+//    @PostMapping("/technological-processes/{full-number}/approve")
+//    public ResponseEntity<Void> approve(@PathVariable("full-number") String fullNumber) {
+//        technologicalProcessService.approve(fullNumber);
+//
+//        return ResponseEntity.ok().build();
+//    }
 
-    @PostMapping("/technological-processes/{archiveNumber}/approve")
-    public ResponseEntity<TechnologicalProcessDto> approve(@PathVariable String archiveNumber) {
-        var result = service.approve(archiveNumber);
+//    @PostMapping("/technological-processes/{full-number}/return-for-revision")
+//    public ResponseEntity<TechnologicalProcessDto> returnForRevision(@PathVariable("full-number") String fullNumber,
+//                                                                     @Valid @RequestBody AddCommentRequest request) {
+//        var result = technologicalProcessService.returnForRevision(fullNumber, request.content());
+//
+//        return ResponseEntity.ok(technologicalProcessMapper.toDto(result));
+//    }
 
-        return ResponseEntity.ok(mapper.toDto(result));
-    }
+//    @PostMapping("/technological-processes/{full-number}/comments/{comment-id}/resolve")
+//    public ResponseEntity<TechnologicalProcessDto> resolveComment(@PathVariable("full-number") String fullNumber,
+//                                                                  @PathVariable("comment-id") String commentId) {
+//        var result = technologicalProcessService.resolveComment(fullNumber, commentId);
+//        return ResponseEntity.ok(technologicalProcessMapper.toDto(result));
+//    }
+//
+//    @PostMapping("/technological-processes/{full-number}/create-revision")
+//    public ResponseEntity<Void> createRevision(@PathVariable("full-number") String fullNumber) {
+//        technologicalProcessService.createRevision(fullNumber);
+//
+//        return ResponseEntity.status(HttpStatus.CREATED).build();
+//    }
 
-    @PostMapping("/technological-processes/{archiveNumber}/return-for-revision")
-    public ResponseEntity<TechnologicalProcessDto> returnForRevision(@PathVariable String archiveNumber,
-                                                                     @Valid @RequestBody AddCommentRequest request) {
-        var result = service.returnForRevision(archiveNumber, request.content());
-
-        return ResponseEntity.ok(mapper.toDto(result));
-    }
-
-    @PostMapping("/technological-processes/{archiveNumber}/comments/{commentId}/resolve")
-    public ResponseEntity<TechnologicalProcessDto> resolveComment(@PathVariable String archiveNumber,
-                                                                  @PathVariable String commentId) {
-        var result = service.resolveComment(archiveNumber, commentId);
-        return ResponseEntity.ok(mapper.toDto(result));
-    }
 }

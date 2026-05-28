@@ -1,6 +1,7 @@
 package by.niruin.techprocess_service.domain;
 
 import by.niruin.techprocess_service.domain.enums.BlankType;
+import by.niruin.techprocess_service.domain.enums.OperationType;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -10,17 +11,18 @@ import java.util.Objects;
 public class TechnologicalOperation {
     private Integer number;
     private String name;
-    private String workerCode;
+    private List<String> workerCodes;
     private final List<SafetyInstructionReference> safetyInstructions = new ArrayList<>();
-    private boolean isOnlyForWoman;
-    private Integer sectionNumber;
-    private String weight;
+    private boolean isOnlyForMan;
+    private Integer area;
+    private Double weight;
     private BlankType blankType;
     private String equipment;
-    private final List<Part> parts = new ArrayList<>();
+    private final List<PartReference> partReferences = new ArrayList<>();
     private final List<MaterialReference> materialReferences = new ArrayList<>();
     private final List<TechnologicalTransition> transitions = new ArrayList<>();
     private boolean isSertified;
+    private OperationType operationType;
     private final List<SketchCard> sketchCards = new ArrayList<>();
 
     public Integer getNumber() {
@@ -31,23 +33,23 @@ public class TechnologicalOperation {
         return name;
     }
 
-    public String getWorkerCode() {
-        return workerCode;
+    public List<String> getWorkerCodes() {
+        return Collections.unmodifiableList(workerCodes);
     }
 
     public List<SafetyInstructionReference> getSafetyInstructions() {
         return Collections.unmodifiableList(safetyInstructions);
     }
 
-    public boolean isOnlyForWoman() {
-        return isOnlyForWoman;
+    public boolean isOnlyForMan() {
+        return isOnlyForMan;
     }
 
-    public Integer getSectionNumber() {
-        return sectionNumber;
+    public Integer getArea() {
+        return area;
     }
 
-    public String getWeight() {
+    public Double getWeight() {
         return weight;
     }
 
@@ -59,8 +61,8 @@ public class TechnologicalOperation {
         return equipment;
     }
 
-    public List<Part> getProducts() {
-        return Collections.unmodifiableList(parts);
+    public List<PartReference> getProducts() {
+        return Collections.unmodifiableList(partReferences);
     }
 
     public List<MaterialReference> getMaterials() {
@@ -87,19 +89,22 @@ public class TechnologicalOperation {
         this.name = name;
     }
 
-    public void setWorkerCode(String workerCode) {
-        this.workerCode = workerCode;
+    public void setWorkerCodes(List<String> workerCodes) {
+        Objects.requireNonNull(workerCodes);
+
+        this.workerCodes.clear();
+        this.workerCodes.addAll(workerCodes);
     }
 
-    public void setOnlyForWoman(boolean onlyForWoman) {
-        isOnlyForWoman = onlyForWoman;
+    public void setOnlyForMan(boolean onlyForMan) {
+        isOnlyForMan = onlyForMan;
     }
 
-    public void setSectionNumber(Integer sectionNumber) {
-        this.sectionNumber = sectionNumber;
+    public void setArea(Integer area) {
+        this.area = area;
     }
 
-    public void setWeight(String weight) {
+    public void setWeight(Double weight) {
         this.weight = weight;
     }
 
@@ -122,11 +127,11 @@ public class TechnologicalOperation {
         this.safetyInstructions.addAll(safetyInstructions);
     }
 
-    public void setProducts(List<Part> parts) {
+    public void setProducts(List<PartReference> partReferences) {
         Objects.requireNonNull(safetyInstructions);
 
-        this.parts.clear();
-        this.parts.addAll(parts);
+        this.partReferences.clear();
+        this.partReferences.addAll(partReferences);
     }
 
     public void setMaterials(List<MaterialReference> materialReferences) {
@@ -148,5 +153,13 @@ public class TechnologicalOperation {
 
         this.sketchCards.clear();
         this.sketchCards.addAll(sketchCards);
+    }
+
+    public OperationType getOperationType() {
+        return operationType;
+    }
+
+    public void setOperationType(OperationType operationType) {
+        this.operationType = operationType;
     }
 }

@@ -1,128 +1,178 @@
 package by.niruin.techprocess_service.service;
 
 import by.niruin.techprocess_service.domain.enums.TechnologicalProcessStatus;
+import by.niruin.techprocess_service.mapper.TechnologicalProcessMapper;
 import by.niruin.techprocess_service.model.technological_process.CreateTechprocessRequest;
-import by.niruin.techprocess_service.model.technological_process.CreateTechprocessResponse;
 import by.niruin.techprocess_service.repository.TechnologicalProcessRepository;
+import by.niruin.techprocess_service.repository.TransactionOutboxRepository;
+import by.niruin.techprocess_service.security.JwtParser;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
-import org.springframework.context.annotation.Import;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.web.client.HttpClientErrorException;
-import org.springframework.web.client.RestClient;
+import org.springframework.test.web.servlet.MockMvc;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.mongodb.MongoDBContainer;
+import tools.jackson.databind.ObjectMapper;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest
 @Testcontainers
-@Import(TestConfig.class)
 @ActiveProfiles("test")
+@AutoConfigureMockMvc(printOnlyOnFailure = false)
 class TechnologicalProcessServiceIT {
     private static final Logger log = LogManager.getLogger(TechnologicalProcessServiceIT.class);
     @Container
     @ServiceConnection
-    static MongoDBContainer mongo = new MongoDBContainer("mongo:7.0");
-
-    @LocalServerPort
-    private int port;
-
+    static MongoDBContainer mongoContainer = new MongoDBContainer("mongo:7.0");
     @Autowired
-    TechnologicalProcessRepository repository;
-
-    private RestClient restClient;
+    private TechnologicalProcessRepository technologicalProcessRepository;
+    @Autowired
+    private TransactionOutboxRepository transactionOutboxRepository;
+    @Autowired
+    private TechnologicalProcessMapper processMapper;
+    @Autowired
+    private MockMvc mockMvc;
+    @Autowired
+    private ObjectMapper objectMapper;
+    @Autowired
+    private JwtParser jwtParser;
+    @Autowired
+    private TechnologicalProcessService technologicalProcessService;
 
     @BeforeEach
-    void setUp() {
-        restClient = RestClient.builder()
-                .baseUrl("http://localhost:" + port + "/api/v1/techprocess-service")
-                .build();
-        repository.deleteAll();
+    void cleanDatabase() {
+        technologicalProcessRepository.deleteAll();
+        transactionOutboxRepository.deleteAll();
     }
 
     @Test
-    void shouldSaveSuccessfully() {
-        var request = validRequest();
+    void save_success() throws Exception {
+        var request = createValidRequest();
+        var requestJson = objectMapper.writeValueAsString(request);
+        var requestBuilder = post("/api/v1/techprocess-service/technological-processes")
+                .contentType(MediaType.APPLICATION_JSON)
+                .with(SecurityMockMvcRequestPostProcessors.jwt()
+                        .jwt(jwt -> {
+                            jwt.claim("first_name", "Евгений");
+                            jwt.claim("last_name", "Лагун");
+                            jwt.claim("father_name", "Сергеевич");
+                        }))
+                .content(requestJson);
 
-        var response = restClient.post()
-                .uri("/technological-processes")
-                .body(request)
-                .retrieve()
-                .toEntity(CreateTechprocessResponse.class);
-
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
-
-        var body = response.getBody();
-        assertThat(body).isNotNull();
-        assertThat(body.id()).isNotBlank();
-        assertThat(body.archiveNumber()).isEqualTo("12345");
-        assertThat(body.status()).isEqualTo(TechnologicalProcessStatus.IN_DEVELOPMENT);
-        assertThat(body.revision()).isZero();
-        assertThat(body.fullNumber()).isNotBlank();
-        assertThat(body.developerLastName()).isEqualTo("Лагун");
-        assertThat(body.developerFirstName()).isEqualTo("Евгений");
-        assertThat(body.createdDate()).isNotNull();
-        log.error(repository.findAll().getFirst());
+        mockMvc.perform(requestBuilder)
+                .andExpectAll(
+                        status().isCreated(),
+                        content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON),
+                        content().json(requestJson),
+                        jsonPath("$.id").exists(),
+                        jsonPath("$.status").value(TechnologicalProcessStatus.IN_DEVELOPMENT.name()),
+                        jsonPath("$.revision").value(0),
+                        jsonPath("$.fullNumber").value("100316761292.02188.12345"),
+                        jsonPath("$.createdDate").exists(),
+                        jsonPath("$.updatedDate").exists(),
+                        jsonPath("$.reviewerApprovedDate").doesNotExist());
+        assertThat(technologicalProcessRepository.findAll()).hasSize(1);
+        assertThat(transactionOutboxRepository.findAll()).hasSize(1);
     }
 
     @Test
-    void shouldFailOnDuplicateArchiveNumber() {
-        var request = validRequest();
-        createProcess(request);
+    void save_shouldThrowsValidationException() throws Exception {
+        var request = createInvalidRequest();
+        var requestJson = objectMapper.writeValueAsString(request);
+        var requestBuilder = post("/api/v1/techprocess-service/technological-processes")
+                .contentType(MediaType.APPLICATION_JSON)
+                .with(SecurityMockMvcRequestPostProcessors.jwt()
+                        .jwt(jwt -> {
+                            jwt.claim("first_name", "Евгений");
+                            jwt.claim("last_name", "Лагун");
+                            jwt.claim("father_name", "Сергеевич");
+                        }))
+                .content(requestJson);
 
-        var ex = assertThrows(HttpClientErrorException.Conflict.class, () ->
-                restClient.post()
-                        .uri("/technological-processes")
-                        .body(request)
-                        .retrieve()
-                        .toEntity(Void.class)
-        );
-        assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        mockMvc.perform(requestBuilder)
+                .andExpectAll(
+                        status().isBadRequest(),
+                        jsonPath("$.error").exists(),
+                        jsonPath("$.message").exists(),
+                        jsonPath("$.code").value(HttpStatus.BAD_REQUEST.value()));
+        assertThat(technologicalProcessRepository.findAll()).hasSize(0);
+        assertThat(transactionOutboxRepository.findAll()).hasSize(0);
     }
 
     @Test
-    void shouldFailOnDuplicateInSameWorkshop() {
-        var request = validRequest();
-        createProcess(request);
+    void save_shouldThrowsCreationException_whenHasSelfReviewer() throws Exception {
+        var request = createRequestWithSelfReviewer();
+        var requestJson = objectMapper.writeValueAsString(request);
+        var requestBuilder = post("/api/v1/techprocess-service/technological-processes")
+                .contentType(MediaType.APPLICATION_JSON)
+                .with(SecurityMockMvcRequestPostProcessors.jwt()
+                        .jwt(jwt -> {
+                            jwt.claim("first_name", "Евгений");
+                            jwt.claim("last_name", "Лагун");
+                            jwt.claim("father_name", "Сергеевич");
+                        }))
+                .content(requestJson);
 
-        var ex = assertThrows(HttpClientErrorException.Conflict.class, () ->
-                restClient.post()
-                        .uri("/technological-processes")
-                        .body(request)
-                        .retrieve()
-                        .toEntity(Void.class)
-        );
-        assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        mockMvc.perform(requestBuilder)
+                .andExpectAll(
+                        status().isBadRequest(),
+                        jsonPath("$.error").exists(),
+                        jsonPath("$.message").exists(),
+                        jsonPath("$.code").value(HttpStatus.BAD_REQUEST.value()));
+
+        assertThat(technologicalProcessRepository.findAll()).hasSize(0);
+        assertThat(transactionOutboxRepository.findAll()).hasSize(0);
     }
 
     @Test
-    void shouldFailOnValidation() {
-        var invalidRequest = new CreateTechprocessRequest(
-                null, "Вал", "12", "Иванов", "Петров",
-                "Геевич", "INVALID", "INVALID", "INVALID", ""
-        );
+    void save_shouldThrowsAlreadyExistException() throws Exception {
+        var request = createValidRequest();
+        var requestJson = objectMapper.writeValueAsString(request);
 
-        var ex = assertThrows(HttpClientErrorException.BadRequest.class, () ->
-                restClient.post()
-                        .uri("/technological-processes")
-                        .body(invalidRequest)
-                        .retrieve()
-                        .toEntity(Void.class)
-        );
-        assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        mockMvc.perform(post("/api/v1/techprocess-service/technological-processes")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .with(SecurityMockMvcRequestPostProcessors.jwt()
+                                .jwt(jwt -> {
+                                    jwt.claim("first_name", "Петр");
+                                    jwt.claim("last_name", "Петров");
+                                    jwt.claim("father_name", "Петрович");
+                                }))
+                        .content(requestJson))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(post("/api/v1/techprocess-service/technological-processes")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .with(SecurityMockMvcRequestPostProcessors.jwt()
+                                .jwt(jwt -> {
+                                    jwt.claim("first_name", "Евгений");
+                                    jwt.claim("last_name", "Лагун");
+                                    jwt.claim("father_name", "Сергеевич");
+                                }))
+                        .content(requestJson))
+                .andExpectAll(
+                        status().isConflict(),
+                        jsonPath("$.error").exists(),
+                        jsonPath("$.message").exists(),
+                        jsonPath("$.code").value(HttpStatus.CONFLICT.value()));
+
+        assertThat(technologicalProcessRepository.findAll()).hasSize(1);
     }
 
-    private CreateTechprocessRequest validRequest() {
+
+    private CreateTechprocessRequest createValidRequest() {
         return new CreateTechprocessRequest(
                 "ДЕТ-1234567",
                 "Вал-шестерня",
@@ -133,15 +183,34 @@ class TechnologicalProcessServiceIT {
                 "003",
                 "ASSEMBLY",
                 "SINGLE",
-                "Сборка редуктора"
-        );
+                "Сборка редуктора");
     }
 
-    private void createProcess(CreateTechprocessRequest request) {
-        restClient.post()
-                .uri("/technological-processes")
-                .body(request)
-                .retrieve()
-                .toEntity(Void.class);
+    private CreateTechprocessRequest createRequestWithSelfReviewer() {
+        return new CreateTechprocessRequest(
+                "ДЕТ-1234567",
+                "Вал-шестерня",
+                "12345",
+                jwtParser.getFirstName(),
+                jwtParser.getLastName(),
+                jwtParser.getFatherName(),
+                "003",
+                "ASSEMBLY",
+                "SINGLE",
+                "Сборка редуктора");
+    }
+
+    private CreateTechprocessRequest createInvalidRequest() {
+        return new CreateTechprocessRequest(
+                "ДЕТ-1234567",
+                "AD!@31",
+                "fdsa",
+                "Ivanov",
+                "ivan",
+                "Iv432",
+                "abc",
+                "TEST",
+                "TESTT",
+                "1239fdsa");
     }
 }

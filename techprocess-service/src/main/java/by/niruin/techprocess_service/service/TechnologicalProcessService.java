@@ -1,15 +1,16 @@
 package by.niruin.techprocess_service.service;
 
+import by.niruin.techprocess_service.domain.TechnologicalOperation;
 import by.niruin.techprocess_service.domain.TechnologicalProcess;
 import by.niruin.techprocess_service.domain.enums.TechnologicalProcessStatus;
 import by.niruin.techprocess_service.exception.*;
 import by.niruin.techprocess_service.kafka.EventPublisher;
+import by.niruin.techprocess_service.model.technological_process.AddTransitionRequest;
 import by.niruin.techprocess_service.repository.TechnologicalProcessRepository;
 import by.niruin.techprocess_service.security.JwtParser;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class TechnologicalProcessService {
@@ -27,7 +28,6 @@ public class TechnologicalProcessService {
         this.jwtParser = jwtParser;
     }
 
-    @Transactional
     public TechnologicalProcess save(TechnologicalProcess techprocess) {
         validateUniqueness(techprocess);
 
@@ -43,7 +43,6 @@ public class TechnologicalProcessService {
         return saved;
     }
 
-    @Transactional
     public void cancel(String fullNumber) {
         var existing = repository.findFirstByArchiveNumberOrderByRevisionDesc(fullNumber)
                 .orElseThrow(() -> new EntityNotFoundException("Techprocess with number %s not found"
@@ -66,32 +65,27 @@ public class TechnologicalProcessService {
         eventPublisher.publishTechprocessCancelledEvent(existing);
     }
 
-    @Transactional(readOnly = true)
     public TechnologicalProcess getInStatusSetUpByNumber(String fullNumber) {
         return repository.findFirstByFullNumberAndStatusOrderByRevisionDesc(fullNumber, TechnologicalProcessStatus.SET_UP)
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Techprocess with number %s not found".formatted(fullNumber)));
     }
 
-    @Transactional(readOnly = true)
     public TechnologicalProcess getByNumberAndRevision(String fullNumber, Integer revision) {
         return repository.findByFullNumberAndRevision(fullNumber, revision)
                 .orElseThrow(() -> new EntityNotFoundException("Techprocess with number %s and revision %d not found"
                         .formatted(fullNumber, revision)));
     }
 
-    @Transactional(readOnly = true)
     public Page<TechnologicalProcess> getPage(Pageable pageable) {
         return repository.findAll(pageable);
     }
 
-    @Transactional(readOnly = true)
     public Page<TechnologicalProcess> getPageByStatus(TechnologicalProcessStatus technologicalProcessStatus,
                                                       Pageable pageable) {
         return repository.findAllByStatus(technologicalProcessStatus, pageable);
     }
 
-    @Transactional
     public TechnologicalProcess update(TechnologicalProcess technologicalProcess) {
         var fullNumber = fullNumberBuilder.buildFullNumber(
                 technologicalProcess.getOrganizationType(),
@@ -100,7 +94,7 @@ public class TechnologicalProcessService {
 
         var existing = repository.findFirstByFullNumberOrderByRevisionDesc(fullNumber)
                 .orElseThrow(() -> new EntityNotFoundException(
-                        "Techprocess with number %s not found".formatted(technologicalProcess.getFullNumber())));
+                        "Техпроцесс с id %s не найден".formatted(technologicalProcess.getFullNumber())));
 
         var status = existing.getStatus();
         if (status != TechnologicalProcessStatus.IN_DEVELOPMENT && status != TechnologicalProcessStatus.IN_CORRECTION) {
@@ -117,6 +111,27 @@ public class TechnologicalProcessService {
         repository.save(existing);
 
         return existing;
+    }
+
+    public TechnologicalProcess addOperation(String fullNumber, TechnologicalOperation operation) {
+        var existing = repository.findFirstByFullNumberAndStatusOrderByRevisionDesc(
+                        fullNumber,
+                        TechnologicalProcessStatus.IN_CORRECTION)
+                .orElse(repository.findFirstByFullNumberAndStatusOrderByRevisionDesc(
+                                fullNumber,
+                                TechnologicalProcessStatus.IN_DEVELOPMENT)
+                        .orElseThrow(() ->
+                                new EntityNotFoundException("Техпроцесса с номером %s и статусом \"В разработке\" или \"На корректировке\" не найдено")));
+
+        checkOwner(existing);
+
+        existing.addOperation(operation);
+
+        return existing;
+    }
+
+    public TechnologicalProcess addTransition(String fullNumber, AddTransitionRequest request) {
+        return null;
     }
 
     private void checkIsNumberExist(String organizationType, String workType, String archiveNumber) {
@@ -164,7 +179,7 @@ public class TechnologicalProcessService {
         if (techprocess.getDeveloperFirstName().equals(techprocess.getReviewerFirstName()) &&
                 techprocess.getDeveloperLastName().equals(techprocess.getReviewerLastName()) &&
                 techprocess.getDeveloperFatherName().equals(techprocess.getReviewerFatherName())) {
-            throw new TechprocessCreationException("Нельзя назначить на проверяющего самого себя");
+            throw new TechprocessSavingException("Нельзя назначить на проверяющего самого себя");
         }
     }
 
@@ -184,20 +199,41 @@ public class TechnologicalProcessService {
     }
 
     private void updateFields(TechnologicalProcess existing, TechnologicalProcess newTechprocess) {
-            existing.setPartNumber(newTechprocess.getPartNumber());
-            existing.setPartName(newTechprocess.getPartName());
-            existing.setWorkshopCode(newTechprocess.getWorkshopCode());
+        existing.setPartNumber(newTechprocess.getPartNumber());
+        existing.setPartName(newTechprocess.getPartName());
+        existing.setWorkshopCode(newTechprocess.getWorkshopCode());
+        existing.setOrganizationType(newTechprocess.getOrganizationType());
+        existing.setWorkName(newTechprocess.getWorkName());
+        existing.setReviewerFirstName(newTechprocess.getReviewerFirstName());
+        existing.setReviewerLastName(newTechprocess.getReviewerLastName());
+        existing.setReviewerFatherName(newTechprocess.getReviewerFatherName());
+        existing.setOperations(newTechprocess.getOperations());
+
+        if (existing.getOrganizationType() != newTechprocess.getOrganizationType()) {
             existing.setOrganizationType(newTechprocess.getOrganizationType());
-            existing.setWorkType(newTechprocess.getWorkType());
-            existing.setWorkName(newTechprocess.getWorkName());
-            existing.setReviewerFirstName(newTechprocess.getReviewerFirstName());
-            existing.setReviewerLastName(newTechprocess.getReviewerLastName());
-            existing.setReviewerFatherName(newTechprocess.getReviewerFatherName());
-            existing.setOperations(newTechprocess.getOperations());
-// переделать под проверки номеров. если изменился тип то меняем
-            existing.setFullNumber(fullNumberBuilder.buildFullNumber(
-                    newTechprocess.getOrganizationType(),
-                    newTechprocess.getWorkType(),
-                    newTechprocess.getArchiveNumber()));
+        }
+
+        existing.setFullNumber(fullNumberBuilder.buildFullNumber(
+                newTechprocess.getOrganizationType(),
+                newTechprocess.getWorkType(),
+                newTechprocess.getArchiveNumber()));
+    }
+
+    private void checkOwner(TechnologicalProcess technologicalProcess) {
+        var devFirstName = jwtParser.getFirstName();
+        var devLastName = jwtParser.getLastName();
+        var devFatherName = jwtParser.getFatherName();
+
+        if (!technologicalProcess.getDeveloperFirstName().equals(devFirstName)
+                && !technologicalProcess.getDeveloperLastName().equals(devLastName)
+                && !technologicalProcess.getDeveloperFatherName().equals(devFatherName)) {
+            throw new AuthorizationException("Нельзя добавить операцию не являясь владельцем техпроцесса");
+        }
+    }
+
+    public void sendToReview(String fullNumber) {
+    }
+
+    public void approve(String fullNumber) {
     }
 }

@@ -7,9 +7,11 @@ import by.niruin.techprocess_service.model.event.MessageBrokerEvent;
 import by.niruin.techprocess_service.model.event.file.FileDeletedEvent;
 import by.niruin.techprocess_service.model.event.file.MoveFileToPermanentStorageEvent;
 import by.niruin.techprocess_service.service.TransactionOutboxService;
+import org.springframework.stereotype.Component;
 
 import java.util.function.Function;
 
+@Component
 public class EventPublisher {
     private final TransactionOutboxService outboxService;
     private final TechnologicalProcessMapper technologicalProcessMapper;

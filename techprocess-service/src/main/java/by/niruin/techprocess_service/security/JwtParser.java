@@ -1,12 +1,10 @@
 package by.niruin.techprocess_service.security;
 
-import org.springframework.context.annotation.Profile;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Component;
 
 @Component
-@Profile("!test")
 public class JwtParser {
     public String getFirstName() {
         return getClaim("first_name");

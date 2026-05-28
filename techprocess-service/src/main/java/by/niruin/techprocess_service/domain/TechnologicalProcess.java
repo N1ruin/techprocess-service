@@ -24,6 +24,7 @@ public class TechnologicalProcess {
     private String partNumber;
     private String partName;
     private String archiveNumber;
+    private String authorUsername;
     private String developerLastName;
     private String developerFirstName;
     private String developerFatherName;
@@ -225,5 +226,19 @@ public class TechnologicalProcess {
 
     public void setReviewerFatherName(String reviewerFatherName) {
         this.reviewerFatherName = reviewerFatherName;
+    }
+
+    public String getAuthorUsername() {
+        return authorUsername;
+    }
+
+    public void setAuthorUsername(String authorUsername) {
+        this.authorUsername = authorUsername;
+    }
+
+    public void addOperation(TechnologicalOperation operation) {
+        if (operation != null) {
+            operations.add(operation);
+        }
     }
 }

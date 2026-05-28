@@ -2,7 +2,7 @@ package by.niruin.techprocess_service.domain;
 
 import by.niruin.techprocess_service.domain.enums.MaterialUnit;
 
-public class Part {
+public class PartReference {
     private String position;
     private String name;
     private String number;
