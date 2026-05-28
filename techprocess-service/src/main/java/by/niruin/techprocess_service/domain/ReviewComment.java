@@ -8,6 +8,11 @@ public class ReviewComment {
     private String content;
     private Instant createdDate;
 
+//    private String operationNumber;
+//    private Integer transitionNumber;
+//    private String fieldPath;
+//    private String highlightedText;
+
     public String getId() {
         return id;
     }
