@@ -1,13 +1,20 @@
 package by.niruin.techprocess_service.service;
 
+import by.niruin.techprocess_service.domain.EquipmentReference;
+import by.niruin.techprocess_service.domain.SafetyInstructionReference;
+import by.niruin.techprocess_service.domain.enums.BlankType;
+import by.niruin.techprocess_service.domain.enums.OperationType;
 import by.niruin.techprocess_service.domain.enums.TechnologicalProcessStatus;
 import by.niruin.techprocess_service.mapper.TechnologicalProcessMapper;
+import by.niruin.techprocess_service.model.technological_process.AddOperationRequest;
 import by.niruin.techprocess_service.model.technological_process.CreateTechprocessRequest;
+import by.niruin.techprocess_service.model.technological_process.TechnologicalProcessDto;
 import by.niruin.techprocess_service.repository.TechnologicalProcessRepository;
 import by.niruin.techprocess_service.repository.TransactionOutboxRepository;
 import by.niruin.techprocess_service.security.JwtParser;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.jspecify.annotations.NonNull;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,7 +31,10 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.mongodb.MongoDBContainer;
 import tools.jackson.databind.ObjectMapper;
 
+import java.util.List;
+
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -69,7 +79,8 @@ class TechnologicalProcessServiceIT {
                             jwt.claim("first_name", "Евгений");
                             jwt.claim("last_name", "Лагун");
                             jwt.claim("father_name", "Сергеевич");
-                        }))
+                        })
+                )
                 .content(requestJson);
 
         mockMvc.perform(requestBuilder)
@@ -99,7 +110,8 @@ class TechnologicalProcessServiceIT {
                             jwt.claim("first_name", "Евгений");
                             jwt.claim("last_name", "Лагун");
                             jwt.claim("father_name", "Сергеевич");
-                        }))
+                        })
+                )
                 .content(requestJson);
 
         mockMvc.perform(requestBuilder)
@@ -123,7 +135,8 @@ class TechnologicalProcessServiceIT {
                             jwt.claim("first_name", "Евгений");
                             jwt.claim("last_name", "Лагун");
                             jwt.claim("father_name", "Сергеевич");
-                        }))
+                        })
+                )
                 .content(requestJson);
 
         mockMvc.perform(requestBuilder)
@@ -160,7 +173,8 @@ class TechnologicalProcessServiceIT {
                                     jwt.claim("first_name", "Евгений");
                                     jwt.claim("last_name", "Лагун");
                                     jwt.claim("father_name", "Сергеевич");
-                                }))
+                                })
+                        )
                         .content(requestJson))
                 .andExpectAll(
                         status().isConflict(),
@@ -171,6 +185,353 @@ class TechnologicalProcessServiceIT {
         assertThat(technologicalProcessRepository.findAll()).hasSize(1);
     }
 
+    @Test
+    void cancel_success() throws Exception {
+        var request = createValidRequest();
+        var requestJson = objectMapper.writeValueAsString(request);
+
+        var response = mockMvc.perform(post("/api/v1/techprocess-service/technological-processes")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .with(SecurityMockMvcRequestPostProcessors.jwt()
+                                .jwt(jwt -> {
+                                    jwt.claim("first_name", "Петр");
+                                    jwt.claim("last_name", "Петров");
+                                    jwt.claim("father_name", "Петрович");
+                                })
+                        )
+                        .content(requestJson))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        var dto = objectMapper.readValue(response.getResponse().getContentAsString(), TechnologicalProcessDto.class);
+
+        mockMvc.perform(post("/api/v1/techprocess-service/technological-processes/{full-number}/send-to-review",
+                        dto.fullNumber())
+                        .with(SecurityMockMvcRequestPostProcessors.jwt()
+                                .jwt(jwt -> {
+                                    jwt.claim("first_name", "Петр");
+                                    jwt.claim("last_name", "Петров");
+                                    jwt.claim("father_name", "Петрович");
+                                })
+                        ))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/v1/techprocess-service/technological-processes/{full-number}/approve",
+                        dto.fullNumber())
+                        .with(SecurityMockMvcRequestPostProcessors.jwt()
+                                .jwt(jwt -> {
+                                    jwt.claim("first_name", "Иванов");
+                                    jwt.claim("last_name", "Иван");
+                                    jwt.claim("father_name", "Иванович");
+                                })
+                        ))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/v1/techprocess-service/technological-processes/{full-number}/cancel",
+                        dto.fullNumber())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .with(SecurityMockMvcRequestPostProcessors.jwt()
+                                .jwt(jwt -> {
+                                    jwt.claim("first_name", "Петр");
+                                    jwt.claim("last_name", "Петров");
+                                    jwt.claim("father_name", "Петрович");
+                                })
+                        )
+                )
+                .andExpectAll(status().isOk());
+
+        assertThat(technologicalProcessRepository.findByFullNumber(dto.fullNumber()).get().getStatus())
+                .isEqualTo(TechnologicalProcessStatus.CANCELLED);
+    }
+
+    @Test
+    void cancel_shouldThrowNotFoundException() throws Exception {
+        var fullNumber = "1231212312";
+
+        mockMvc.perform(post("/api/v1/techprocess-service/technological-processes/{full-number}/cancel",
+                        fullNumber)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .with(SecurityMockMvcRequestPostProcessors.jwt()
+                                .jwt(jwt -> {
+                                    jwt.claim("first_name", "Евгений");
+                                    jwt.claim("last_name", "Лагун");
+                                    jwt.claim("father_name", "Сергеевич");
+                                })
+                        )
+                )
+                .andExpectAll(
+                        status().isNotFound(),
+                        jsonPath("$.error").exists(),
+                        jsonPath("$.message").exists(),
+                        jsonPath("$.code").value(HttpStatus.NOT_FOUND.value()));
+    }
+//Три кейса на статусы IN CORRECTION, CANCELLED и PRODUCTION ошибки
+
+    @Test
+    void getByNumberAndRevision_shouldReturnRevisionZero() throws Exception {
+        var request = createValidRequest();
+        var requestJson = objectMapper.writeValueAsString(request);
+
+        var response = mockMvc.perform(post("/api/v1/techprocess-service/technological-processes")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .with(SecurityMockMvcRequestPostProcessors.jwt()
+                                .jwt(jwt -> {
+                                    jwt.claim("first_name", "Петр");
+                                    jwt.claim("last_name", "Петров");
+                                    jwt.claim("father_name", "Петрович");
+                                })
+                        )
+                        .content(requestJson))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        var responseBody = response.getResponse().getContentAsString();
+        var savedDto = objectMapper.readValue(responseBody, TechnologicalProcessDto.class);
+
+        mockMvc.perform(get("/api/v1/techprocess-service/technological-processes/{full-number}?revision=0",
+                        savedDto.fullNumber())
+                        .with(SecurityMockMvcRequestPostProcessors.jwt()
+                                .jwt(jwt -> {
+                                    jwt.claim("first_name", "Петр");
+                                    jwt.claim("last_name", "Петров");
+                                    jwt.claim("father_name", "Петрович");
+                                })))
+                .andExpectAll(
+                        jsonPath("$.id").value(savedDto.id()),
+                        jsonPath("$.status").value(savedDto.status().name()),
+                        jsonPath("$.revision").value(0),
+                        jsonPath("$.fullNumber").value(savedDto.fullNumber()),
+                        jsonPath("$.createdDate").exists(),
+                        jsonPath("$.updatedDate").exists(),
+                        jsonPath("$.reviewerApprovedDate").doesNotExist());
+    }
+
+    @Test
+    void getByNumberAndRevision_shouldThrowNotFound() throws Exception {
+        var fullNumber = "41324312";
+
+        mockMvc.perform(get("/api/v1/techprocess-service/technological-processes/{full-number}?revision=0",
+                        fullNumber)
+                        .with(SecurityMockMvcRequestPostProcessors.jwt()
+                                .jwt(jwt -> {
+                                    jwt.claim("first_name", "Петр");
+                                    jwt.claim("last_name", "Петров");
+                                    jwt.claim("father_name", "Петрович");
+                                })))
+                .andExpectAll(
+                        status().isNotFound(),
+                        jsonPath("$.error").exists(),
+                        jsonPath("$.message").exists(),
+                        jsonPath("$.code").value(HttpStatus.NOT_FOUND.value()));
+    }
+
+    @Test
+    void getByNumber_shouldThrowNotFound() throws Exception {
+        var fullNumber = "41324312";
+
+        mockMvc.perform(get("/api/v1/techprocess-service/technological-processes/{full-number}",
+                        fullNumber)
+                        .with(SecurityMockMvcRequestPostProcessors.jwt()
+                                .jwt(jwt -> {
+                                    jwt.claim("first_name", "Петр");
+                                    jwt.claim("last_name", "Петров");
+                                    jwt.claim("father_name", "Петрович");
+                                })))
+                .andExpectAll(
+                        status().isNotFound(),
+                        jsonPath("$.error").exists(),
+                        jsonPath("$.message").exists(),
+                        jsonPath("$.code").value(HttpStatus.NOT_FOUND.value()));
+    }
+
+    @Test
+    void getByNumberByRevision_shouldThrowNotFound() throws Exception {
+        var fullNumber = "41324312";
+
+        mockMvc.perform(get("/api/v1/techprocess-service/technological-processes/{full-number}?revision=0",
+                        fullNumber)
+                        .with(SecurityMockMvcRequestPostProcessors.jwt()
+                                .jwt(jwt -> {
+                                    jwt.claim("first_name", "Петр");
+                                    jwt.claim("last_name", "Петров");
+                                    jwt.claim("father_name", "Петрович");
+                                })))
+                .andExpectAll(
+                        status().isNotFound(),
+                        jsonPath("$.error").exists(),
+                        jsonPath("$.message").exists(),
+                        jsonPath("$.code").value(HttpStatus.NOT_FOUND.value()));
+    }
+
+    @Test
+    void sendToReviewAndApproved_shouldReturnStatusApproved() throws Exception {
+        var request = createValidRequest();
+        var requestJson = objectMapper.writeValueAsString(request);
+
+        var response = mockMvc.perform(post("/api/v1/techprocess-service/technological-processes")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .with(SecurityMockMvcRequestPostProcessors.jwt()
+                                .jwt(jwt -> {
+                                    jwt.claim("first_name", "Петр");
+                                    jwt.claim("last_name", "Петров");
+                                    jwt.claim("father_name", "Петрович");
+                                })
+                        )
+                        .content(requestJson))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        var responseBody = response.getResponse().getContentAsString();
+        var savedDto = objectMapper.readValue(responseBody, TechnologicalProcessDto.class);
+
+        mockMvc.perform(post("/api/v1/techprocess-service/technological-processes/{full-number}/send-to-review",
+                        savedDto.fullNumber())
+                        .with(SecurityMockMvcRequestPostProcessors.jwt()
+                                .jwt(jwt -> {
+                                    jwt.claim("first_name", "Петр");
+                                    jwt.claim("last_name", "Петров");
+                                    jwt.claim("father_name", "Петрович");
+                                })
+                        ))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/v1/techprocess-service/technological-processes/{full-number}/approve",
+                        savedDto.fullNumber())
+                        .with(SecurityMockMvcRequestPostProcessors.jwt()
+                                .jwt(jwt -> {
+                                    jwt.claim("first_name", "Иванов");
+                                    jwt.claim("last_name", "Иван");
+                                    jwt.claim("father_name", "Иванович");
+                                })
+                        ))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/v1/techprocess-service/technological-processes/{full-number}",
+                        savedDto.fullNumber())
+                        .with(SecurityMockMvcRequestPostProcessors.jwt()
+                                .jwt(jwt -> {
+                                    jwt.claim("first_name", "Иванов");
+                                    jwt.claim("last_name", "Иван");
+                                    jwt.claim("father_name", "Иванович");
+                                })
+                        ))
+                .andExpectAll(
+                        status().isOk(),
+                        jsonPath("$.status").value(TechnologicalProcessStatus.SET_UP.name())
+                );
+    }
+
+    @Test
+    void sendToReview_throwNotFoundException() throws Exception {
+        var number = "535432";
+
+        mockMvc.perform(post("/api/v1/techprocess-service/technological-processes/{full-number}/send-to-review",
+                        number)
+                        .with(SecurityMockMvcRequestPostProcessors.jwt()
+                                .jwt(jwt -> {
+                                    jwt.claim("first_name", "Петр");
+                                    jwt.claim("last_name", "Петров");
+                                    jwt.claim("father_name", "Петрович");
+                                })
+                        ))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void approve_throwNotFoundException() throws Exception {
+        var number = "535432";
+
+        mockMvc.perform(post("/api/v1/techprocess-service/technological-processes/{full-number}/approve",
+                        number)
+                        .with(SecurityMockMvcRequestPostProcessors.jwt()
+                                .jwt(jwt -> {
+                                    jwt.claim("first_name", "Петр");
+                                    jwt.claim("last_name", "Петров");
+                                    jwt.claim("father_name", "Петрович");
+                                })
+                        ))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void addOperation_shouldReturnTechprocess() throws Exception {
+        var request = createValidRequest();
+        var requestJson = objectMapper.writeValueAsString(request);
+
+        var requestBuilder = post("/api/v1/techprocess-service/technological-processes")
+                .contentType(MediaType.APPLICATION_JSON)
+                .with(SecurityMockMvcRequestPostProcessors.jwt()
+                        .jwt(jwt -> {
+                            jwt.claim("first_name", "Евгений");
+                            jwt.claim("last_name", "Лагун");
+                            jwt.claim("father_name", "Сергеевич");
+                        })
+                )
+                .content(requestJson);
+
+        var response = mockMvc.perform(requestBuilder)
+                .andExpectAll(
+                        status().isCreated(),
+                        content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON),
+                        content().json(requestJson),
+                        jsonPath("$.id").exists(),
+                        jsonPath("$.status").value(TechnologicalProcessStatus.IN_DEVELOPMENT.name()),
+                        jsonPath("$.revision").value(0),
+                        jsonPath("$.fullNumber").value("100316761292.02188.12345"),
+                        jsonPath("$.createdDate").exists(),
+                        jsonPath("$.updatedDate").exists(),
+                        jsonPath("$.reviewerApprovedDate").doesNotExist())
+                .andReturn();
+
+        var dto = objectMapper.readValue(response.getResponse().getContentAsString(), TechnologicalProcessDto.class);
+
+        var operationRequest = getAddOperationRequest();
+        var operationRequestJson = objectMapper.writeValueAsString(operationRequest);
+
+        mockMvc.perform(post("/api/v1//techprocess-service/technological-processes/{full-number}/operations",
+                        dto.fullNumber())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .with(SecurityMockMvcRequestPostProcessors.jwt()
+                                .jwt(jwt -> {
+                                    jwt.claim("first_name", "Евгений");
+                                    jwt.claim("last_name", "Лагун");
+                                    jwt.claim("father_name", "Сергеевич");
+                                })
+                        )
+                        .content(operationRequestJson))
+                .andExpectAll(
+                        jsonPath("$.id").value(dto.id()),
+                        jsonPath("$.status").value(dto.status().name()),
+                        jsonPath("$.revision").value(dto.revision()),
+                        jsonPath("$.fullNumber").value(dto.fullNumber()),
+                        jsonPath("$.createdDate").exists(),
+                        jsonPath("$.updatedDate").exists(),
+                        jsonPath("$.operations.length()").value(1),
+                        jsonPath("$.operations[0].number").value(operationRequest.number()),
+                        jsonPath("$.operations[0].name").value(operationRequest.name()),
+                        jsonPath("$.reviewerApprovedDate").doesNotExist()
+                );
+    }
+
+    private AddOperationRequest getAddOperationRequest() {
+        var equipmentReference = new EquipmentReference();
+        equipmentReference.setFromLibrary(false);
+        equipmentReference.setIndex("Б517");
+        equipmentReference.setName("Стол-верстак");
+
+        return new AddOperationRequest(
+                "010",
+                "Сборочная",
+                List.of("12345"),
+                List.of(new SafetyInstructionReference("101", false)),
+                equipmentReference,
+                "4",
+                BlankType.OPERATION_BLANK_TITLE,
+                1.5,
+                1,
+                false,
+                OperationType.ASSEMBLY);
+    }
 
     private CreateTechprocessRequest createValidRequest() {
         return new CreateTechprocessRequest(

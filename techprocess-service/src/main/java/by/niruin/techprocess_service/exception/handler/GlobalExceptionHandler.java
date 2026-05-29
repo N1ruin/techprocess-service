@@ -2,6 +2,7 @@ package by.niruin.techprocess_service.exception.handler;
 
 import by.niruin.techprocess_service.exception.EntityAlreadyExistException;
 import by.niruin.techprocess_service.exception.EntityNotFoundException;
+import by.niruin.techprocess_service.exception.TechprocessCancellationException;
 import by.niruin.techprocess_service.exception.TechprocessSavingException;
 import by.niruin.techprocess_service.model.error.ErrorResponse;
 import org.apache.logging.log4j.LogManager;
@@ -53,6 +54,16 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
     }
 
+    @ExceptionHandler(TechprocessCancellationException.class)
+    public ResponseEntity<ErrorResponse> handleValidationException(TechprocessCancellationException exception) {
+        log.warn("Exception: {}", exception.getMessage(), exception);
+
+        var errorResponse = new ErrorResponse("Entity cancellation exception", exception.getMessage(),
+                HttpStatus.CONFLICT.value());
+
+        return new ResponseEntity<>(errorResponse, HttpStatus.CONFLICT);
+    }
+
     @ExceptionHandler(TechprocessSavingException.class)
     public ResponseEntity<ErrorResponse> handleSavingException(TechprocessSavingException exception) {
         log.warn("Exception: {}", exception.getMessage(), exception);
@@ -62,7 +73,6 @@ public class GlobalExceptionHandler {
 
         return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
     }
-
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleException(Exception exception) {

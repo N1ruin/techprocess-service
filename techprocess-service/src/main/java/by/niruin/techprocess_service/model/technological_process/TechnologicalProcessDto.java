@@ -29,7 +29,7 @@ public record TechnologicalProcessDto( String id,
                                        Instant createdDate,
                                        Instant updatedDate,
                                        Instant reviewerApprovedDate,
-                                       Instant sentToReviewAt,
+                                       Instant sentToReviewDate,
                                        List<TechnologicalOperation> operations,
                                        List<ReviewComment> reviewComments) {
 }

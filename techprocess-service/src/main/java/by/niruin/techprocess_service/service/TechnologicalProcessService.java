@@ -2,15 +2,17 @@ package by.niruin.techprocess_service.service;
 
 import by.niruin.techprocess_service.domain.TechnologicalOperation;
 import by.niruin.techprocess_service.domain.TechnologicalProcess;
+import by.niruin.techprocess_service.domain.TechnologicalTransition;
 import by.niruin.techprocess_service.domain.enums.TechnologicalProcessStatus;
 import by.niruin.techprocess_service.exception.*;
 import by.niruin.techprocess_service.kafka.EventPublisher;
-import by.niruin.techprocess_service.model.technological_process.AddTransitionRequest;
 import by.niruin.techprocess_service.repository.TechnologicalProcessRepository;
 import by.niruin.techprocess_service.security.JwtParser;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+
+import java.time.Instant;
 
 @Service
 public class TechnologicalProcessService {
@@ -44,7 +46,7 @@ public class TechnologicalProcessService {
     }
 
     public void cancel(String fullNumber) {
-        var existing = repository.findFirstByArchiveNumberOrderByRevisionDesc(fullNumber)
+        var existing = repository.findFirstByFullNumberOrderByRevisionDesc(fullNumber)
                 .orElseThrow(() -> new EntityNotFoundException("Techprocess with number %s not found"
                         .formatted(fullNumber)));
 
@@ -54,11 +56,13 @@ public class TechnologicalProcessService {
         }
 
         if (existing.getStatus() == TechnologicalProcessStatus.CANCELLED
-                || existing.getStatus() == TechnologicalProcessStatus.PRODUCTION) {
+                || existing.getStatus() == TechnologicalProcessStatus.PRODUCTION
+                || existing.getStatus() == TechnologicalProcessStatus.IN_DEVELOPMENT
+                || existing.getStatus() == TechnologicalProcessStatus.IN_REVIEW) {
             throw new TechprocessCancellationException("It is not possible to cancel the technological process in the status of %s"
                     .formatted(existing.getStatus().name()));
-
         }
+
         existing.setStatus(TechnologicalProcessStatus.CANCELLED);
 
         repository.save(existing);
@@ -109,6 +113,7 @@ public class TechnologicalProcessService {
         updateFields(existing, technologicalProcess);
 
         repository.save(existing);
+        eventPublisher.publishTechprocessUpdatedEvent(existing);
 
         return existing;
     }
@@ -121,17 +126,78 @@ public class TechnologicalProcessService {
                                 fullNumber,
                                 TechnologicalProcessStatus.IN_DEVELOPMENT)
                         .orElseThrow(() ->
-                                new EntityNotFoundException("Техпроцесса с номером %s и статусом \"В разработке\" или \"На корректировке\" не найдено")));
+                                new EntityNotFoundException("Техпроцесса с номером %s и статусом \"В разработке\" или \"На корректировке\" не найдено"
+                                        .formatted(fullNumber))));
 
-        checkOwner(existing);
+        checkTechprocessOwner(existing);
 
         existing.addOperation(operation);
-
+        //проверить что меняется дата обновления если добавить операцию
         return existing;
     }
 
-    public TechnologicalProcess addTransition(String fullNumber, AddTransitionRequest request) {
-        return null;
+    public TechnologicalProcess addTransition(String operationNumber, String fullNumber, TechnologicalTransition transition) {
+        var existing = repository.findFirstByFullNumberAndStatusOrderByRevisionDesc(
+                        fullNumber,
+                        TechnologicalProcessStatus.IN_CORRECTION)
+                .orElse(repository.findFirstByFullNumberAndStatusOrderByRevisionDesc(
+                                fullNumber,
+                                TechnologicalProcessStatus.IN_DEVELOPMENT)
+                        .orElseThrow(() ->
+                                new EntityNotFoundException("Техпроцесса с номером %s и статусом \"В разработке\" или \"На корректировке\" не найдено"
+                                        .formatted(fullNumber))));
+
+        checkTechprocessOwner(existing);
+
+        var existingOperation = existing.getOperations()
+                .stream()
+                .filter(operation -> operation.getNumber().equals(operationNumber))
+                .findFirst()
+                .orElseThrow(() -> new EntityNotFoundException("Операции с номером %s не существует в техпроцессе."
+                        .formatted(operationNumber)));
+
+        existingOperation.addTransition(transition);
+
+        return repository.save(existing);
+    }
+
+    public void sendToReview(String fullNumber) {
+        var existing = repository.findFirstByFullNumberAndStatusOrderByRevisionDesc(
+                        fullNumber,
+                        TechnologicalProcessStatus.IN_CORRECTION)
+                .orElse(repository.findFirstByFullNumberAndStatusOrderByRevisionDesc(
+                                fullNumber,
+                                TechnologicalProcessStatus.IN_DEVELOPMENT)
+                        .orElseThrow(() ->
+                                new EntityNotFoundException("Техпроцесса с номером %s и статусом \"В разработке\" или \"На корректировке\" не найдено"
+                                        .formatted(fullNumber))));
+
+        checkTechprocessOwner(existing);
+
+        existing.setStatus(TechnologicalProcessStatus.IN_REVIEW);
+        existing.setSentToReviewDate(Instant.now());
+
+        eventPublisher.publishProcessSentToReviewEvent(existing);
+
+        repository.save(existing);
+    }
+
+    public void approve(String fullNumber) {
+        var existing = repository.findFirstByFullNumberAndStatusOrderByRevisionDesc(
+                        fullNumber,
+                        TechnologicalProcessStatus.IN_REVIEW)
+                .orElseThrow(() ->
+                        new EntityNotFoundException("Техпроцесса с номером %s и статусом \"На проверке\" не найдено"
+                                .formatted(fullNumber)));
+
+        checkTechprocessReviewer(existing);
+
+        existing.setStatus(TechnologicalProcessStatus.SET_UP);
+        existing.setReviewerApprovedDate(Instant.now());
+
+        eventPublisher.publishProcessSentToReviewEvent(existing);
+
+        repository.save(existing);
     }
 
     private void checkIsNumberExist(String organizationType, String workType, String archiveNumber) {
@@ -219,7 +285,7 @@ public class TechnologicalProcessService {
                 newTechprocess.getArchiveNumber()));
     }
 
-    private void checkOwner(TechnologicalProcess technologicalProcess) {
+    private void checkTechprocessOwner(TechnologicalProcess technologicalProcess) {
         var devFirstName = jwtParser.getFirstName();
         var devLastName = jwtParser.getLastName();
         var devFatherName = jwtParser.getFatherName();
@@ -227,13 +293,19 @@ public class TechnologicalProcessService {
         if (!technologicalProcess.getDeveloperFirstName().equals(devFirstName)
                 && !technologicalProcess.getDeveloperLastName().equals(devLastName)
                 && !technologicalProcess.getDeveloperFatherName().equals(devFatherName)) {
-            throw new AuthorizationException("Нельзя добавить операцию не являясь владельцем техпроцесса");
+            throw new AuthorizationException("Нельзя выполнить операцию не являясь владельцем техпроцесса");
         }
     }
 
-    public void sendToReview(String fullNumber) {
-    }
+    private void checkTechprocessReviewer(TechnologicalProcess technologicalProcess) {
+        var reviewerFirstName = jwtParser.getFirstName();
+        var reviewerLastName = jwtParser.getLastName();
+        var reviewerFatherName = jwtParser.getFatherName();
 
-    public void approve(String fullNumber) {
+        if (!technologicalProcess.getReviewerFirstName().equals(reviewerFirstName)
+                && !technologicalProcess.getReviewerLastName().equals(reviewerLastName)
+                && !technologicalProcess.getReviewerFatherName().equals(reviewerFatherName)) {
+            throw new AuthorizationException("Нет прав для согласования техпроцесса");
+        }
     }
 }

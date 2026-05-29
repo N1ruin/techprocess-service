@@ -2,6 +2,7 @@ package by.niruin.techprocess_service.domain;
 
 import by.niruin.techprocess_service.domain.enums.BlankType;
 import by.niruin.techprocess_service.domain.enums.OperationType;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -9,23 +10,25 @@ import java.util.List;
 import java.util.Objects;
 
 public class TechnologicalOperation {
-    private Integer number;
+    private String number;
     private String name;
-    private List<String> workerCodes;
+    private final List<String> workerCodes = new ArrayList<>();
     private final List<SafetyInstructionReference> safetyInstructions = new ArrayList<>();
+    @JsonProperty("onlyForMan")
     private boolean isOnlyForMan;
     private Integer area;
     private Double weight;
     private BlankType blankType;
-    private String equipment;
+    private EquipmentReference equipment;
     private final List<PartReference> partReferences = new ArrayList<>();
     private final List<MaterialReference> materialReferences = new ArrayList<>();
     private final List<TechnologicalTransition> transitions = new ArrayList<>();
+    @JsonProperty("sertified")
     private boolean isSertified;
     private OperationType operationType;
     private final List<SketchCard> sketchCards = new ArrayList<>();
 
-    public Integer getNumber() {
+    public String getNumber() {
         return number;
     }
 
@@ -57,7 +60,7 @@ public class TechnologicalOperation {
         return blankType;
     }
 
-    public String getEquipment() {
+    public EquipmentReference getEquipment() {
         return equipment;
     }
 
@@ -81,7 +84,7 @@ public class TechnologicalOperation {
         return sketchCards;
     }
 
-    public void setNumber(Integer number) {
+    public void setNumber(String number) {
         this.number = number;
     }
 
@@ -112,7 +115,7 @@ public class TechnologicalOperation {
         this.blankType = blankType;
     }
 
-    public void setEquipment(String equipment) {
+    public void setEquipment(EquipmentReference equipment) {
         this.equipment = equipment;
     }
 
@@ -161,5 +164,11 @@ public class TechnologicalOperation {
 
     public void setOperationType(OperationType operationType) {
         this.operationType = operationType;
+    }
+
+    public void addTransition(TechnologicalTransition transition) {
+        Objects.requireNonNull(transition);
+
+        this.transitions.add(transition);
     }
 }

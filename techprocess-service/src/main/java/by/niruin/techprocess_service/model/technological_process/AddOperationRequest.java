@@ -2,14 +2,15 @@ package by.niruin.techprocess_service.model.technological_process;
 
 import by.niruin.techprocess_service.domain.*;
 import by.niruin.techprocess_service.domain.enums.BlankType;
+import by.niruin.techprocess_service.domain.enums.OperationType;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 
 import java.util.List;
 
-public record CreateOperationRequest(
+public record AddOperationRequest(
         @NotNull
-        @Pattern(regexp = "^[0-9]{3,4}[а-я]$", message = "Неверный формат номера операции")
+        @Pattern(regexp = "^[0-9]{3,4}[а-я]?$", message = "Неверный формат номера операции")
         String number,
 
         @NotNull
@@ -33,5 +34,7 @@ public record CreateOperationRequest(
 
         Integer area,
         @NotNull
-        Boolean isOnlyForMan) {
+        Boolean isOnlyForMan,
+        @NotNull
+        OperationType operationType) {
 }

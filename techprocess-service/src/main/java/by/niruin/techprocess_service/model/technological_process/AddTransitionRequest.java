@@ -8,8 +8,11 @@ import java.util.List;
 
 public record AddTransitionRequest(
         @NotNull
-        @Pattern(regexp = "^[0-9]+$")
-        Integer number,
+        @Pattern(regexp = "^[0-9]+[а-я]?$")
+        String operationNumber,
+        @NotNull
+        @Pattern(regexp = "^[0-9]{1,3}")
+        String number,
         @NotNull
         String content,
         List<EquipmentReference> equipmentReferences) {

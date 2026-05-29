@@ -39,12 +39,12 @@ public class TechnologicalProcess {
     private final List<TechnologicalOperation> operations = new ArrayList<>();
     private final List<ReviewComment> reviewComments = new ArrayList<>();
     private Integer revision;
-    @Transient
     private String fullNumber;
     @CreatedDate
     private Instant createdDate;
     @LastModifiedDate
     private Instant updatedDate;
+    private Instant sentToReviewDate;
     private Instant reviewerApprovedDate;
 
     public String getId() {
@@ -240,5 +240,13 @@ public class TechnologicalProcess {
         if (operation != null) {
             operations.add(operation);
         }
+    }
+
+    public Instant getSentToReviewDate() {
+        return sentToReviewDate;
+    }
+
+    public void setSentToReviewDate(Instant sentToReviewDate) {
+        this.sentToReviewDate = sentToReviewDate;
     }
 }

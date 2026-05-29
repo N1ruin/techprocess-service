@@ -30,4 +30,6 @@ public interface TechnologicalProcessRepository extends MongoRepository<Technolo
     Optional<TechnologicalProcess> findFirstByFullNumberOrderByRevisionDesc(String fullNumber);
 
     Page<TechnologicalProcess> findAllByStatus(TechnologicalProcessStatus technologicalProcessStatus, Pageable pageable);
+
+    Optional<TechnologicalProcess> findByFullNumber(String fullNumber);
 }
