@@ -9,5 +9,6 @@ import org.mapstruct.Mapping;
 public interface TechnologicalOperationMapper {
     @Mapping(target = "equipment", source = "equipmentReference")
     @Mapping(target = "safetyInstructions", source = "safetyInstructionReferences")
+    @Mapping(target = "parts", source = "partReferences")
     TechnologicalOperation toOperation(AddOperationRequest request);
 }

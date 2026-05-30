@@ -3,6 +3,7 @@ package by.niruin.techprocess_service.domain;
 import by.niruin.techprocess_service.domain.enums.BlankType;
 import by.niruin.techprocess_service.domain.enums.OperationType;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import org.springframework.data.annotation.AccessType;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -20,8 +21,9 @@ public class TechnologicalOperation {
     private Double weight;
     private BlankType blankType;
     private EquipmentReference equipment;
-    private final List<PartReference> partReferences = new ArrayList<>();
-    private final List<MaterialReference> materialReferences = new ArrayList<>();
+    @AccessType(AccessType.Type.FIELD)
+    private final List<PartReference> parts = new ArrayList<>();
+    private final List<MaterialReference> materials = new ArrayList<>();
     private final List<TechnologicalTransition> transitions = new ArrayList<>();
     @JsonProperty("sertified")
     private boolean isSertified;
@@ -64,12 +66,12 @@ public class TechnologicalOperation {
         return equipment;
     }
 
-    public List<PartReference> getProducts() {
-        return Collections.unmodifiableList(partReferences);
+    public List<PartReference> getParts() {
+        return Collections.unmodifiableList(parts);
     }
 
     public List<MaterialReference> getMaterials() {
-        return Collections.unmodifiableList(materialReferences);
+        return Collections.unmodifiableList(materials);
     }
 
     public List<TechnologicalTransition> getTransitions() {
@@ -130,29 +132,29 @@ public class TechnologicalOperation {
         this.safetyInstructions.addAll(safetyInstructions);
     }
 
-    public void setProducts(List<PartReference> partReferences) {
-        Objects.requireNonNull(safetyInstructions);
+    public void setParts(List<PartReference> partReferences) {
+        Objects.requireNonNull(partReferences);
 
-        this.partReferences.clear();
-        this.partReferences.addAll(partReferences);
+        this.parts.clear();
+        this.parts.addAll(partReferences);
     }
 
     public void setMaterials(List<MaterialReference> materialReferences) {
-        Objects.requireNonNull(safetyInstructions);
+        Objects.requireNonNull(materialReferences);
 
-        this.materialReferences.clear();
-        this.materialReferences.addAll(materialReferences);
+        this.materials.clear();
+        this.materials.addAll(materialReferences);
     }
 
     public void setTransitions(List<TechnologicalTransition> transitions) {
-        Objects.requireNonNull(safetyInstructions);
+        Objects.requireNonNull(transitions);
 
         this.transitions.clear();
         this.transitions.addAll(transitions);
     }
 
     public void setSketchCards(List<SketchCard> sketchCards) {
-        Objects.requireNonNull(safetyInstructions);
+        Objects.requireNonNull(sketchCards);
 
         this.sketchCards.clear();
         this.sketchCards.addAll(sketchCards);
@@ -170,5 +172,11 @@ public class TechnologicalOperation {
         Objects.requireNonNull(transition);
 
         this.transitions.add(transition);
+    }
+
+    public void addPart(PartReference partReference) {
+        Objects.requireNonNull(partReference);
+
+        this.parts.add(partReference);
     }
 }

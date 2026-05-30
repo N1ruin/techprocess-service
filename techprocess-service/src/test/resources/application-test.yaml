@@ -4,3 +4,10 @@ spring:
       resourceserver:
         jwt:
           issuer-uri: http://localhost:8080/realms/test
+
+logging:
+  level:
+    by.niruin.techprocess_service: DEBUG
+    org.springframework.data.mongodb: DEBUG
+    org.springframework.web: DEBUG
+    org.springframework.test.web.servlet: DEBUG

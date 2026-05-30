@@ -95,29 +95,36 @@ public class TechnologicalProcessController {
     public ResponseEntity<TechnologicalProcessDto> addOperation(@PathVariable("full-number") String fullNumber,
                                                                 @Valid @RequestBody AddOperationRequest request) {
         var operation = technologicalOperationMapper.toOperation(request);
+        operation.setParts(request.partReferences());
 
         var result = technologicalProcessService.addOperation(fullNumber, operation);
 
-        return ResponseEntity.ok(technologicalProcessMapper.toDto(result));
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(technologicalProcessMapper.toDto(result));
     }
 
-    @PostMapping("/technological-processes/{full-number}/operations/{number}")
+    @PostMapping("/technological-processes/{full-number}/operations/{number}/transitions")
     public ResponseEntity<TechnologicalProcessDto> addTransition(@PathVariable("full-number") String fullNumber,
                                                                  @Valid @RequestBody AddTransitionRequest request) {
         var transition = technologicalTransitionMapper.toTransition(request);
 
         var result = technologicalProcessService.addTransition(request.operationNumber(), fullNumber, transition);
 
-        return ResponseEntity.ok(technologicalProcessMapper.toDto(result));
+        var dto = technologicalProcessMapper.toDto(result);
+
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(dto);
     }
-// протестировано
+
+    // протестировано
     @PostMapping("/technological-processes/{full-number}/send-to-review")
     public ResponseEntity<Void> sendToReview(@PathVariable("full-number") String fullNumber) {
         technologicalProcessService.sendToReview(fullNumber);
 
         return ResponseEntity.ok().build();
     }
-//протестировано
+
+    //протестировано
     @PostMapping("/technological-processes/{full-number}/approve")
     public ResponseEntity<Void> approve(@PathVariable("full-number") String fullNumber) {
         technologicalProcessService.approve(fullNumber);

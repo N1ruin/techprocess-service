@@ -8,6 +8,8 @@ import by.niruin.techprocess_service.exception.*;
 import by.niruin.techprocess_service.kafka.EventPublisher;
 import by.niruin.techprocess_service.repository.TechnologicalProcessRepository;
 import by.niruin.techprocess_service.security.JwtParser;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -20,6 +22,7 @@ public class TechnologicalProcessService {
     private final TechnologicalProcessFullNumberBuilder fullNumberBuilder;
     private final EventPublisher eventPublisher;
     private final JwtParser jwtParser;
+    private static final Logger log = LogManager.getLogger(TechnologicalProcessService.class);
 
     public TechnologicalProcessService(TechnologicalProcessRepository repository,
                                        TechnologicalProcessFullNumberBuilder fullNumberBuilder,
@@ -128,12 +131,12 @@ public class TechnologicalProcessService {
                         .orElseThrow(() ->
                                 new EntityNotFoundException("Техпроцесса с номером %s и статусом \"В разработке\" или \"На корректировке\" не найдено"
                                         .formatted(fullNumber))));
-
+//todo доделать чтобы у меня была возможность добавлять примечания в техпроцессах типа звездочки поступает в сборе
         checkTechprocessOwner(existing);
 
         existing.addOperation(operation);
         //проверить что меняется дата обновления если добавить операцию
-        return existing;
+        return repository.save(existing);
     }
 
     public TechnologicalProcess addTransition(String operationNumber, String fullNumber, TechnologicalTransition transition) {

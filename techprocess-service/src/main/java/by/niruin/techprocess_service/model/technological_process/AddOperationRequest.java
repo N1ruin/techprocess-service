@@ -22,6 +22,8 @@ public record AddOperationRequest(
         @NotNull
         List<SafetyInstructionReference> safetyInstructionReferences,
 
+        List<PartReference> partReferences,
+
         EquipmentReference equipmentReference,
 
         @Pattern(regexp = "^[1-6]$")

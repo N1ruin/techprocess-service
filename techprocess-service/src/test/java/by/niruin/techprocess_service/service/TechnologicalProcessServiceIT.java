@@ -1,12 +1,15 @@
 package by.niruin.techprocess_service.service;
 
 import by.niruin.techprocess_service.domain.EquipmentReference;
+import by.niruin.techprocess_service.domain.PartReference;
 import by.niruin.techprocess_service.domain.SafetyInstructionReference;
 import by.niruin.techprocess_service.domain.enums.BlankType;
+import by.niruin.techprocess_service.domain.enums.MaterialUnit;
 import by.niruin.techprocess_service.domain.enums.OperationType;
 import by.niruin.techprocess_service.domain.enums.TechnologicalProcessStatus;
 import by.niruin.techprocess_service.mapper.TechnologicalProcessMapper;
 import by.niruin.techprocess_service.model.technological_process.AddOperationRequest;
+import by.niruin.techprocess_service.model.technological_process.AddTransitionRequest;
 import by.niruin.techprocess_service.model.technological_process.CreateTechprocessRequest;
 import by.niruin.techprocess_service.model.technological_process.TechnologicalProcessDto;
 import by.niruin.techprocess_service.repository.TechnologicalProcessRepository;
@@ -500,6 +503,7 @@ class TechnologicalProcessServiceIT {
                         )
                         .content(operationRequestJson))
                 .andExpectAll(
+                        status().isCreated(),
                         jsonPath("$.id").value(dto.id()),
                         jsonPath("$.status").value(dto.status().name()),
                         jsonPath("$.revision").value(dto.revision()),
@@ -513,17 +517,124 @@ class TechnologicalProcessServiceIT {
                 );
     }
 
+    @Test
+    void addOperation_shouldThrowNotFound() throws Exception {
+        var operationRequest = getAddOperationRequest();
+        var operationRequestJson = objectMapper.writeValueAsString(operationRequest);
+        var fullNumber = "12321321.21321.32123";
+
+        mockMvc.perform(post("/api/v1//techprocess-service/technological-processes/{full-number}/operations",
+                        fullNumber)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(operationRequestJson)
+                        .with(SecurityMockMvcRequestPostProcessors.jwt()
+                                .jwt(jwt -> {
+                                    jwt.claim("first_name", "Евгений");
+                                    jwt.claim("last_name", "Лагун");
+                                    jwt.claim("father_name", "Сергеевич");
+                                })
+                        ))
+                .andExpectAll(
+                        status().isNotFound(),
+                        jsonPath("$.error").exists(),
+                        jsonPath("$.message").exists(),
+                        jsonPath("$.code").value(HttpStatus.NOT_FOUND.value()));
+    }
+
+    @Test
+    void addTransition_success() throws Exception {
+        var createTechprocessRequest = createValidRequest();
+        var requestJson = objectMapper.writeValueAsString(createTechprocessRequest);
+        var createProcessResponse = mockMvc.perform(post("/api/v1/techprocess-service/technological-processes")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestJson)
+                        .with(SecurityMockMvcRequestPostProcessors.jwt()
+                                .jwt(jwt -> {
+                                    jwt.claim("first_name", "Евгений");
+                                    jwt.claim("last_name", "Лагун");
+                                    jwt.claim("father_name", "Сергеевич");
+                                })
+                        ))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        var dto = objectMapper.readValue(createProcessResponse.getResponse().getContentAsString(),
+                TechnologicalProcessDto.class);
+
+        var operationRequest = getAddOperationRequest();
+        var operationRequestJson = objectMapper.writeValueAsString(operationRequest);
+
+        var addOperationResponse = mockMvc.perform(
+                        post("/api/v1//techprocess-service/technological-processes/{full-number}/operations",
+                                dto.fullNumber())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .with(SecurityMockMvcRequestPostProcessors.jwt()
+                                        .jwt(jwt -> {
+                                            jwt.claim("first_name", "Евгений");
+                                            jwt.claim("last_name", "Лагун");
+                                            jwt.claim("father_name", "Сергеевич");
+                                        })
+                                )
+                                .content(operationRequestJson))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        var addOperationResponseDto = objectMapper.readValue(addOperationResponse.getResponse().getContentAsString(),
+                TechnologicalProcessDto.class);
+
+        var addTransitionRequest = getAddTransitionRequest();
+        var transitionRequestJson = objectMapper.writeValueAsString(addTransitionRequest);
+        var saved = technologicalProcessRepository.findByFullNumber(dto.fullNumber()).get();
+        System.out.println("PARTS IN DB: " + saved.getOperations().get(0).getParts());
+        mockMvc.perform(post("/api/v1/techprocess-service/technological-processes/{full-number}/operations/{number}/transitions",
+                        addOperationResponseDto.fullNumber(), addTransitionRequest.operationNumber())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(transitionRequestJson)
+                        .with(SecurityMockMvcRequestPostProcessors.jwt()
+                                .jwt(jwt -> {
+                                    jwt.claim("first_name", "Евгений");
+                                    jwt.claim("last_name", "Лагун");
+                                    jwt.claim("father_name", "Сергеевич");
+                                })
+                        ))
+                .andExpectAll(
+                        status().isCreated(),
+                        jsonPath("$.id").value(addOperationResponseDto.id()),
+                        jsonPath("$.status").value(addOperationResponseDto.status().name()),
+                        jsonPath("$.revision").value(addOperationResponseDto.revision()),
+                        jsonPath("$.fullNumber").value(addOperationResponseDto.fullNumber()),
+                        jsonPath("$.createdDate").exists(),
+                        jsonPath("$.updatedDate").exists(),
+                        jsonPath("$.operations.length()").value(1),
+                        jsonPath("$.operations[0].number").value(operationRequest.number()),
+                        jsonPath("$.operations[0].name").value(operationRequest.name()),
+                        jsonPath("$.operations[0].transitions.length()").value(1),
+                        jsonPath("$.operations[0].transitions[0].number").value(addTransitionRequest.number()),
+                        jsonPath("$.operations[0].transitions[0].content").value(addTransitionRequest.content()),
+                        jsonPath("$.operations[0].transitions[0].equipmentReferences.length()").value(2),
+                        jsonPath("$.reviewerApprovedDate").doesNotExist());
+    }
+
     private AddOperationRequest getAddOperationRequest() {
         var equipmentReference = new EquipmentReference();
         equipmentReference.setFromLibrary(false);
         equipmentReference.setIndex("Б517");
         equipmentReference.setName("Стол-верстак");
 
+        var partReference = new PartReference();
+        partReference.setName("Вал");
+        partReference.setNumber("2022-1312321-Б");
+        partReference.setPosition("1");
+        partReference.setQuantity(1);
+        partReference.setMaterialUnit(MaterialUnit.PIECE);
+        partReference.setSupplierCode("342");
+
         return new AddOperationRequest(
-                "010",
+                "005",
                 "Сборочная",
                 List.of("12345"),
                 List.of(new SafetyInstructionReference("101", false)),
+                List.of(partReference),
                 equipmentReference,
                 "4",
                 BlankType.OPERATION_BLANK_TITLE,
@@ -573,5 +684,23 @@ class TechnologicalProcessServiceIT {
                 "TEST",
                 "TESTT",
                 "1239fdsa");
+    }
+
+    private AddTransitionRequest getAddTransitionRequest() {
+        var equipmentReference1 = new EquipmentReference();
+        equipmentReference1.setName("Шуруповерт");
+        equipmentReference1.setIndex("Makita DF333DZ");
+        equipmentReference1.setFromLibrary(false);
+
+        var equipmentReference2 = new EquipmentReference();
+        equipmentReference2.setName("Бита");
+        equipmentReference2.setIndex("123123XP");
+        equipmentReference2.setFromLibrary(false);
+
+        return new AddTransitionRequest(
+                "005",
+                "1",
+                "Взять кронштейн поз. 1, установить его на плиту поз. 1 и прикрепить винтами поз. 12, затянув их до упора",
+                List.of(equipmentReference1, equipmentReference2));
     }
 }
