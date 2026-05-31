@@ -49,7 +49,8 @@ class TechnologicalProcessServiceIT {
     private static final Logger log = LogManager.getLogger(TechnologicalProcessServiceIT.class);
     @Container
     @ServiceConnection
-    static MongoDBContainer mongoContainer = new MongoDBContainer("mongo:7.0");
+    static MongoDBContainer mongoContainer = new MongoDBContainer("mongo:7.0")
+            .withReplicaSet();
     @Autowired
     private TechnologicalProcessRepository technologicalProcessRepository;
     @Autowired

@@ -3,6 +3,9 @@ package by.niruin.techprocess_service.domain;
 import by.niruin.techprocess_service.domain.enums.TechnologicalProcessOrganizationType;
 import by.niruin.techprocess_service.domain.enums.TechnologicalProcessStatus;
 import by.niruin.techprocess_service.domain.enums.TechnologicalProcessWorkType;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.Setter;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.LastModifiedDate;
@@ -18,130 +21,86 @@ import java.util.Objects;
 
 @Document(collection = "technological_processes")
 @CompoundIndex(def = "{'workType': 1, 'archiveNumber': 1, 'organizationType' : 1}", unique = true)
+@Builder
 public class TechnologicalProcess {
+    @Setter
+    @Getter
     @Id
     private String id;
+    @Setter
+    @Getter
     private String partNumber;
+    @Setter
+    @Getter
     private String partName;
+    @Setter
+    @Getter
     private String archiveNumber;
+    @Setter
+    @Getter
     private String authorUsername;
+    @Setter
+    @Getter
     private String developerLastName;
+    @Setter
+    @Getter
     private String developerFirstName;
+    @Setter
+    @Getter
     private String developerFatherName;
+    @Setter
+    @Getter
     private String reviewerFirstName;
+    @Setter
+    @Getter
     private String reviewerLastName;
+    @Setter
+    @Getter
     private String reviewerFatherName;
+    @Setter
+    @Getter
     private String workshopCode;
+    @Setter
+    @Getter
     private TechnologicalProcessOrganizationType organizationType;
+    @Setter
+    @Getter
     private TechnologicalProcessStatus status;
+    @Setter
+    @Getter
     private TechnologicalProcessWorkType workType;
+    @Setter
+    @Getter
     private String workName;
     private final List<TechnologicalOperation> operations = new ArrayList<>();
     private final List<ReviewComment> reviewComments = new ArrayList<>();
+    @Setter
+    @Getter
     private Integer revision;
+    @Setter
+    @Getter
     private String fullNumber;
+    @Setter
+    @Getter
     @CreatedDate
     private Instant createdDate;
+    @Setter
+    @Getter
     @LastModifiedDate
     private Instant updatedDate;
+    @Setter
+    @Getter
     private Instant sentToReviewDate;
+    @Setter
+    @Getter
     private Instant reviewerApprovedDate;
 
-    public String getId() {
-        return id;
-    }
-
-    public String getPartNumber() {
-        return partNumber;
-    }
-
-    public String getPartName() {
-        return partName;
-    }
-
-    public String getArchiveNumber() {
-        return archiveNumber;
-    }
-
-    public String getDeveloperLastName() {
-        return developerLastName;
-    }
-
-    public String getReviewerLastName() {
-        return reviewerLastName;
-    }
-
-    public String getWorkshopCode() {
-        return workshopCode;
-    }
-
-    public TechnologicalProcessOrganizationType getOrganizationType() {
-        return organizationType;
-    }
-
-    public TechnologicalProcessStatus getStatus() {
-        return status;
-    }
-
-    public TechnologicalProcessWorkType getWorkType() {
-        return workType;
-    }
-
-    public String getWorkName() {
-        return workName;
-    }
-
     public List<TechnologicalOperation> getOperations() {
-        return operations;
+        return Collections.unmodifiableList(operations);
     }
 
-
-    public Integer getRevision() {
-        return revision;
-    }
-
-    public Instant getCreatedDate() {
-        return createdDate;
-    }
-
-    public Instant getUpdatedDate() {
-        return updatedDate;
-    }
-
-    public void setId(String id) {
-        this.id = id;
-    }
-
-    public void setPartNumber(String partNumber) {
-        this.partNumber = partNumber;
-    }
-
-    public void setPartName(String partName) {
-        this.partName = partName;
-    }
-
-    public void setArchiveNumber(String archiveNumber) {
-        this.archiveNumber = archiveNumber;
-    }
-
-    public void setWorkshopCode(String workshopCode) {
-        this.workshopCode = workshopCode;
-    }
-
-    public void setOrganizationType(TechnologicalProcessOrganizationType organizationType) {
-        this.organizationType = organizationType;
-    }
-
-    public void setStatus(TechnologicalProcessStatus status) {
-        this.status = status;
-    }
-
-    public void setWorkType(TechnologicalProcessWorkType workType) {
-        this.workType = workType;
-    }
-
-    public void setWorkName(String workName) {
-        this.workName = workName;
+    public List<ReviewComment> getReviewComments() {
+        return Collections.unmodifiableList(reviewComments);
     }
 
     public void setOperations(List<TechnologicalOperation> operations) {
@@ -150,103 +109,15 @@ public class TechnologicalProcess {
         this.operations.addAll(operations);
     }
 
-    public void setRevision(Integer revision) {
-        this.revision = revision;
-    }
-
-    public void setCreatedDate(Instant createdDate) {
-        this.createdDate = createdDate;
-    }
-
-    public void setUpdatedDate(Instant updatedDate) {
-        this.updatedDate = updatedDate;
-    }
-
-    public String getFullNumber() {
-        return fullNumber;
-    }
-
-    public void setFullNumber(String fullNumber) {
-        this.fullNumber = fullNumber;
-    }
-
-    public void setDeveloperLastName(String developerLastName) {
-        this.developerLastName = developerLastName;
-    }
-
-    public void setReviewerLastName(String reviewerLastName) {
-        this.reviewerLastName = reviewerLastName;
-    }
-
-    public List<ReviewComment> getReviewComments() {
-        return Collections.unmodifiableList(reviewComments);
-    }
-
     public void setReviewComments(List<ReviewComment> reviewComments) {
         Objects.requireNonNull(reviewComments);
         this.reviewComments.clear();
         this.reviewComments.addAll(reviewComments);
     }
 
-    public Instant getReviewerApprovedDate() {
-        return reviewerApprovedDate;
-    }
-
-    public void setReviewerApprovedDate(Instant reviewerApprovedDate) {
-        this.reviewerApprovedDate = reviewerApprovedDate;
-    }
-
-    public String getDeveloperFirstName() {
-        return developerFirstName;
-    }
-
-    public void setDeveloperFirstName(String developerFirstName) {
-        this.developerFirstName = developerFirstName;
-    }
-
-    public String getDeveloperFatherName() {
-        return developerFatherName;
-    }
-
-    public void setDeveloperFatherName(String developerFatherName) {
-        this.developerFatherName = developerFatherName;
-    }
-
-    public String getReviewerFirstName() {
-        return reviewerFirstName;
-    }
-
-    public void setReviewerFirstName(String reviewerFirstName) {
-        this.reviewerFirstName = reviewerFirstName;
-    }
-
-    public String getReviewerFatherName() {
-        return reviewerFatherName;
-    }
-
-    public void setReviewerFatherName(String reviewerFatherName) {
-        this.reviewerFatherName = reviewerFatherName;
-    }
-
-    public String getAuthorUsername() {
-        return authorUsername;
-    }
-
-    public void setAuthorUsername(String authorUsername) {
-        this.authorUsername = authorUsername;
-    }
-
     public void addOperation(TechnologicalOperation operation) {
         if (operation != null) {
             operations.add(operation);
         }
-    }
-
-    public Instant getSentToReviewDate() {
-        return sentToReviewDate;
-    }
-
-    public void setSentToReviewDate(Instant sentToReviewDate) {
-        this.sentToReviewDate = sentToReviewDate;
     }
 }

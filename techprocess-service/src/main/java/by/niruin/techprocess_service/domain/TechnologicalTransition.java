@@ -1,5 +1,7 @@
 package by.niruin.techprocess_service.domain;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -9,7 +11,8 @@ public class TechnologicalTransition {
     private Integer number;
     private String content;
     private final List<EquipmentReference> equipmentReferences = new ArrayList<>();
-
+    @JsonProperty("sertified")
+    private boolean isSertified;
     public Integer getNumber() {
         return number;
     }

@@ -84,7 +84,7 @@ public class TechnologicalProcessController {
                                                           @Valid @RequestBody UpdateTechprocessRequest request) {
         var techprocess = technologicalProcessMapper.toTechnologicalProcess(request);
 
-        var updated = technologicalProcessService.update(techprocess);
+        var updated = technologicalProcessService.update(fullNumber, techprocess);
 
         var response = technologicalProcessMapper.toDto(updated);
 
