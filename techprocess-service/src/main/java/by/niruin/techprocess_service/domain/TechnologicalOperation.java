@@ -3,6 +3,8 @@ package by.niruin.techprocess_service.domain;
 import by.niruin.techprocess_service.domain.enums.BlankType;
 import by.niruin.techprocess_service.domain.enums.OperationType;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Getter;
+import lombok.Setter;
 import org.springframework.data.annotation.AccessType;
 
 import java.util.ArrayList;
@@ -11,32 +13,42 @@ import java.util.List;
 import java.util.Objects;
 
 public class TechnologicalOperation {
+    @Getter
+    @Setter
     private String number;
+    @Getter
+    @Setter
     private String name;
     private final List<String> workerCodes = new ArrayList<>();
     private final List<SafetyInstructionReference> safetyInstructions = new ArrayList<>();
+    @Setter
+    @Getter
     @JsonProperty("onlyForMan")
-    private boolean isOnlyForMan;
+    private Boolean isOnlyForMan;
+    @Setter
+    @Getter
     private Integer area;
+    @Setter
+    @Getter
     private Double weight;
+    @Setter
+    @Getter
     private BlankType blankType;
+    @Setter
+    @Getter
     private EquipmentReference equipment;
-    @AccessType(AccessType.Type.FIELD)
     private final List<PartReference> parts = new ArrayList<>();
     private final List<MaterialReference> materials = new ArrayList<>();
     private final List<TechnologicalTransition> transitions = new ArrayList<>();
+    @Setter
+    @Getter
     @JsonProperty("sertified")
-    private boolean isSertified;
+    private Boolean isSertified;
+    @Setter
+    @Getter
     private OperationType operationType;
+    @Getter
     private final List<SketchCard> sketchCards = new ArrayList<>();
-
-    public String getNumber() {
-        return number;
-    }
-
-    public String getName() {
-        return name;
-    }
 
     public List<String> getWorkerCodes() {
         return Collections.unmodifiableList(workerCodes);
@@ -44,26 +56,6 @@ public class TechnologicalOperation {
 
     public List<SafetyInstructionReference> getSafetyInstructions() {
         return Collections.unmodifiableList(safetyInstructions);
-    }
-
-    public boolean isOnlyForMan() {
-        return isOnlyForMan;
-    }
-
-    public Integer getArea() {
-        return area;
-    }
-
-    public Double getWeight() {
-        return weight;
-    }
-
-    public BlankType getBlankType() {
-        return blankType;
-    }
-
-    public EquipmentReference getEquipment() {
-        return equipment;
     }
 
     public List<PartReference> getParts() {
@@ -78,51 +70,11 @@ public class TechnologicalOperation {
         return Collections.unmodifiableList(transitions);
     }
 
-    public boolean isSertified() {
-        return isSertified;
-    }
-
-    public List<SketchCard> getSketchCards() {
-        return sketchCards;
-    }
-
-    public void setNumber(String number) {
-        this.number = number;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
     public void setWorkerCodes(List<String> workerCodes) {
         Objects.requireNonNull(workerCodes);
 
         this.workerCodes.clear();
         this.workerCodes.addAll(workerCodes);
-    }
-
-    public void setOnlyForMan(boolean onlyForMan) {
-        isOnlyForMan = onlyForMan;
-    }
-
-    public void setArea(Integer area) {
-        this.area = area;
-    }
-
-    public void setWeight(Double weight) {
-        this.weight = weight;
-    }
-
-    public void setBlankType(BlankType blankType) {
-        this.blankType = blankType;
-    }
-
-    public void setEquipment(EquipmentReference equipment) {
-        this.equipment = equipment;
-    }
-
-    public void setSertified(boolean sertified) {
-        isSertified = sertified;
     }
 
     public void setSafetyInstructions(List<SafetyInstructionReference> safetyInstructions) {
@@ -160,14 +112,6 @@ public class TechnologicalOperation {
         this.sketchCards.addAll(sketchCards);
     }
 
-    public OperationType getOperationType() {
-        return operationType;
-    }
-
-    public void setOperationType(OperationType operationType) {
-        this.operationType = operationType;
-    }
-
     public void addTransition(TechnologicalTransition transition) {
         Objects.requireNonNull(transition);
 
@@ -178,5 +122,17 @@ public class TechnologicalOperation {
         Objects.requireNonNull(partReference);
 
         this.parts.add(partReference);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass()) return false;
+        TechnologicalOperation that = (TechnologicalOperation) o;
+        return Objects.equals(number, that.number) && Objects.equals(name, that.name);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(number, name);
     }
 }

@@ -11,3 +11,6 @@ logging:
     org.springframework.data.mongodb: DEBUG
     org.springframework.web: DEBUG
     org.springframework.test.web.servlet: DEBUG
+
+file-service:
+  url: http://localhost:9999

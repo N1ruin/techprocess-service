@@ -1,9 +1,6 @@
 package by.niruin.techprocess_service.exception.handler;
 
-import by.niruin.techprocess_service.exception.EntityAlreadyExistException;
-import by.niruin.techprocess_service.exception.EntityNotFoundException;
-import by.niruin.techprocess_service.exception.TechprocessCancellationException;
-import by.niruin.techprocess_service.exception.TechprocessSavingException;
+import by.niruin.techprocess_service.exception.*;
 import by.niruin.techprocess_service.model.error.ErrorResponse;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -55,10 +52,10 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(TechprocessCancellationException.class)
-    public ResponseEntity<ErrorResponse> handleValidationException(TechprocessCancellationException exception) {
+    public ResponseEntity<ErrorResponse> handleTechprocessCancellationException(TechprocessCancellationException exception) {
         log.warn("Exception: {}", exception.getMessage(), exception);
 
-        var errorResponse = new ErrorResponse("Entity cancellation exception", exception.getMessage(),
+        var errorResponse = new ErrorResponse("Techprocess cancellation exception", exception.getMessage(),
                 HttpStatus.CONFLICT.value());
 
         return new ResponseEntity<>(errorResponse, HttpStatus.CONFLICT);
@@ -69,6 +66,26 @@ public class GlobalExceptionHandler {
         log.warn("Exception: {}", exception.getMessage(), exception);
 
         var errorResponse = new ErrorResponse("Entity already exist", exception.getMessage(),
+                HttpStatus.BAD_REQUEST.value());
+
+        return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(AuthorizationException.class)
+    public ResponseEntity<ErrorResponse> handleAuthorizationException(AuthorizationException exception) {
+        log.warn("Exception: {}", exception.getMessage(), exception);
+
+        var errorResponse = new ErrorResponse("Dont have permission", exception.getMessage(),
+                HttpStatus.UNAUTHORIZED.value());
+
+        return new ResponseEntity<>(errorResponse, HttpStatus.UNAUTHORIZED);
+    }
+
+    @ExceptionHandler(TechprocessUpdatingException.class)
+    public ResponseEntity<ErrorResponse> handleTechprocessUpdatingException(TechprocessUpdatingException exception) {
+        log.warn("Exception: {}", exception.getMessage(), exception);
+
+        var errorResponse = new ErrorResponse("Techprocess updating exception: ", exception.getMessage(),
                 HttpStatus.BAD_REQUEST.value());
 
         return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);

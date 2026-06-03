@@ -3,7 +3,6 @@ package by.niruin.techprocess_service.controller;
 import by.niruin.techprocess_service.domain.enums.TechnologicalProcessStatus;
 import by.niruin.techprocess_service.mapper.TechnologicalOperationMapper;
 import by.niruin.techprocess_service.mapper.TechnologicalProcessMapper;
-import by.niruin.techprocess_service.mapper.TechnologicalTransitionMapper;
 import by.niruin.techprocess_service.model.technological_process.*;
 import by.niruin.techprocess_service.service.TechnologicalProcessService;
 import jakarta.validation.Valid;
@@ -21,21 +20,18 @@ public class TechnologicalProcessController {
     private final TechnologicalProcessMapper technologicalProcessMapper;
     private final TechnologicalProcessService technologicalProcessService;
     private final TechnologicalOperationMapper technologicalOperationMapper;
-    private final TechnologicalTransitionMapper technologicalTransitionMapper;
 
     public TechnologicalProcessController(TechnologicalProcessMapper technologicalProcessMapper,
                                           TechnologicalProcessService technologicalProcessService,
-                                          TechnologicalOperationMapper technologicalOperationMapper,
-                                          TechnologicalTransitionMapper technologicalTransitionMapper) {
+                                          TechnologicalOperationMapper technologicalOperationMapper) {
         this.technologicalProcessMapper = technologicalProcessMapper;
         this.technologicalProcessService = technologicalProcessService;
         this.technologicalOperationMapper = technologicalOperationMapper;
-        this.technologicalTransitionMapper = technologicalTransitionMapper;
     }
 
     //ПРОТЕСТИРОВАН
     @PostMapping("/technological-processes")
-    public ResponseEntity<CreateTechprocessResponse> save(@Valid @RequestBody CreateTechprocessRequest request) {
+    public ResponseEntity<CreateTechprocessResponse> create(@Valid @RequestBody CreateTechprocessRequest request) {
         var techprocess = technologicalProcessMapper.toTechnologicalProcess(request);
 
         var saved = technologicalProcessService.save(techprocess);
@@ -48,8 +44,8 @@ public class TechnologicalProcessController {
 
     //ПРОТЕСТИРОВАН
     @GetMapping("/technological-processes/{full-number}")
-    public ResponseEntity<TechnologicalProcessDto> getByNumber(@PathVariable("full-number") String fullNumber,
-                                                               @RequestParam(required = false) Integer revision) {
+    public ResponseEntity<TechnologicalProcessDto> getByFullNumberAndRevision(@PathVariable("full-number") String fullNumber,
+                                                                              @RequestParam(required = false) Integer revision) {
         var techprocess = revision == null
                 ? technologicalProcessService.getInStatusSetUpByNumber(fullNumber)
                 : technologicalProcessService.getByNumberAndRevision(fullNumber, revision);
@@ -59,8 +55,9 @@ public class TechnologicalProcessController {
         return ResponseEntity.ok(dto);
     }
 
+    //ПРОТЕСТИРОВАН
     @GetMapping("/technological-processes")
-    public ResponseEntity<Page<TechnologicalProcessDto>> getPageByStatusSetUp(
+    public ResponseEntity<Page<TechnologicalProcessDto>> getPageInStatusSetUp(
             @PageableDefault(sort = "archiveNumber", direction = Sort.Direction.DESC) Pageable pageable) {
 
         var techprocessPage = technologicalProcessService.getPageByStatus(TechnologicalProcessStatus.SET_UP, pageable);
@@ -70,7 +67,7 @@ public class TechnologicalProcessController {
         return ResponseEntity.ok(dtosPage);
     }
 
-    //ПРОТЕСТИРОВАН 1 КЕЙС, ЕЩЕ 3
+    //ПРОТЕСТИРОВАН
     @PostMapping("/technological-processes/{full-number}/cancel")
     public ResponseEntity<Void> cancel(@PathVariable("full-number") String fullNumber) {
         technologicalProcessService.cancel(fullNumber);
@@ -79,7 +76,7 @@ public class TechnologicalProcessController {
                 .build();
     }
 
-    @PutMapping("/techonoligal-processes/{full-number}")
+    @PutMapping("/technological-processes/{full-number}")
     public ResponseEntity<TechnologicalProcessDto> update(@PathVariable("full-number") String fullNumber,
                                                           @Valid @RequestBody UpdateTechprocessRequest request) {
         var techprocess = technologicalProcessMapper.toTechnologicalProcess(request);
@@ -91,6 +88,7 @@ public class TechnologicalProcessController {
         return ResponseEntity.ok(response);
     }
 
+    //протестирован
     @PostMapping("/technological-processes/{full-number}/operations")
     public ResponseEntity<TechnologicalProcessDto> addOperation(@PathVariable("full-number") String fullNumber,
                                                                 @Valid @RequestBody AddOperationRequest request) {
@@ -102,18 +100,27 @@ public class TechnologicalProcessController {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(technologicalProcessMapper.toDto(result));
     }
+//протестирован
+    @DeleteMapping("technological-processes/{full-number}/operations/{operation-number}")
+    public ResponseEntity<Void> deleteOperation(@PathVariable("full-number") String fullNumber,
+                                                @PathVariable("operation-number") String operationNumber) {
+        technologicalProcessService.deleteOperation(fullNumber, operationNumber);
 
-    @PostMapping("/technological-processes/{full-number}/operations/{number}/transitions")
-    public ResponseEntity<TechnologicalProcessDto> addTransition(@PathVariable("full-number") String fullNumber,
-                                                                 @Valid @RequestBody AddTransitionRequest request) {
-        var transition = technologicalTransitionMapper.toTransition(request);
+        return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
+    }
 
-        var result = technologicalProcessService.addTransition(request.operationNumber(), fullNumber, transition);
 
-        var dto = technologicalProcessMapper.toDto(result);
+    @PutMapping("technological-processes/{full-number}/operations/{operation-number}")
+    public ResponseEntity<TechnologicalProcessDto> updateOperation(@PathVariable("full-number") String fullNumber,
+                                                                   @PathVariable("operation-number") String operationNumber,
+                                                                   @Valid @RequestBody UpdateOperationRequest request) {
+        var operation = technologicalOperationMapper.toOperation(request);
 
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(dto);
+        var techprocess = technologicalProcessService.updateOperation(fullNumber, operationNumber, operation);
+
+        var dto = technologicalProcessMapper.toDto(techprocess);
+
+        return ResponseEntity.ok(dto);
     }
 
     // протестировано

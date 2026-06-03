@@ -1,6 +1,8 @@
 package by.niruin.techprocess_service.domain;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -8,29 +10,18 @@ import java.util.List;
 import java.util.Objects;
 
 public class TechnologicalTransition {
+    @Setter
+    @Getter
     private Integer number;
+    @Setter
+    @Getter
     private String content;
     private final List<EquipmentReference> equipmentReferences = new ArrayList<>();
     @JsonProperty("sertified")
-    private boolean isSertified;
-    public Integer getNumber() {
-        return number;
-    }
-
-    public String getContent() {
-        return content;
-    }
+    private Boolean isSertified;
 
     public List<EquipmentReference> getEquipmentReferences() {
         return Collections.unmodifiableList(equipmentReferences);
-    }
-
-    public void setNumber(Integer number) {
-        this.number = number;
-    }
-
-    public void setContent(String content) {
-        this.content = content;
     }
 
     public void setEquipmentReferences(List<EquipmentReference> equipmentReferences) {

@@ -3,25 +3,20 @@ package by.niruin.techprocess_service.domain;
 import by.niruin.techprocess_service.domain.enums.TechnologicalProcessOrganizationType;
 import by.niruin.techprocess_service.domain.enums.TechnologicalProcessStatus;
 import by.niruin.techprocess_service.domain.enums.TechnologicalProcessWorkType;
-import lombok.Builder;
+import by.niruin.techprocess_service.exception.EntityAlreadyExistException;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.LastModifiedDate;
-import org.springframework.data.annotation.Transient;
 import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
 @Document(collection = "technological_processes")
 @CompoundIndex(def = "{'workType': 1, 'archiveNumber': 1, 'organizationType' : 1}", unique = true)
-@Builder
 public class TechnologicalProcess {
     @Setter
     @Getter
@@ -33,6 +28,9 @@ public class TechnologicalProcess {
     @Setter
     @Getter
     private String partName;
+    @Setter
+    @Getter
+    private String routeCardNote;
     @Setter
     @Getter
     private String archiveNumber;
@@ -116,8 +114,14 @@ public class TechnologicalProcess {
     }
 
     public void addOperation(TechnologicalOperation operation) {
-        if (operation != null) {
-            operations.add(operation);
-        }
+        Objects.requireNonNull(operation);
+
+        operations.add(operation);
+    }
+
+    public void deleteOperation(TechnologicalOperation operation) {
+        Objects.requireNonNull(operation);
+
+        operations.remove(operation);
     }
 }

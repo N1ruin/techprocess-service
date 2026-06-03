@@ -8,7 +8,7 @@ import jakarta.validation.constraints.Pattern;
 
 import java.util.List;
 
-public record AddOperationRequest(
+public record UpdateOperationRequest(
         @NotNull
         @Pattern(regexp = "^[0-9]{3,4}[а-я]?$")
         String number,
@@ -24,8 +24,6 @@ public record AddOperationRequest(
 
         List<PartReference> partReferences,
 
-        List<MaterialReference> materialReferences,
-
         EquipmentReference equipmentReference,
 
         @Pattern(regexp = "^[1-6]$")
@@ -40,5 +38,14 @@ public record AddOperationRequest(
         @NotNull
         Boolean isOnlyForMan,
         @NotNull
-        OperationType operationType) {
+        OperationType operationType,
+
+        @NotNull
+        List<MaterialReference> materialReferences,
+
+        @NotNull
+        List<TechnologicalTransition> transitions,
+
+        @NotNull
+        List<SketchCard> sketchCards) {
 }

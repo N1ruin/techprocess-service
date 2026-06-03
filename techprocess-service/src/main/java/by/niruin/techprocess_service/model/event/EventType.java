@@ -1,5 +1,8 @@
 package by.niruin.techprocess_service.model.event;
 
+import lombok.Getter;
+
+@Getter
 public enum EventType {
     TECHNOLOGICAL_PROCESS_CREATED("technological-process-topic"),
     TECHNOLOGICAL_PROCESS_UPDATED(TECHNOLOGICAL_PROCESS_CREATED.getTopicName()),
@@ -14,9 +17,5 @@ public enum EventType {
 
     EventType(String topicName) {
         this.topicName = topicName;
-    }
-
-    public String getTopicName() {
-        return topicName;
     }
 }

@@ -6,6 +6,7 @@ import by.niruin.techprocess_service.model.technological_process.CreateTechproce
 import by.niruin.techprocess_service.model.event.technological_process.*;
 import by.niruin.techprocess_service.model.technological_process.TechnologicalProcessDto;
 import by.niruin.techprocess_service.model.technological_process.UpdateTechprocessRequest;
+import org.mapstruct.Builder;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.springframework.data.domain.Page;

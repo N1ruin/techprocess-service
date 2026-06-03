@@ -1,47 +1,14 @@
 package by.niruin.techprocess_service.domain;
 
+import lombok.Getter;
+import lombok.Setter;
+
 import java.time.Instant;
 
+@Setter
+@Getter
 public class ReviewComment {
-    private String id;
     private String author;
     private String content;
     private Instant createdDate;
-
-//    private String operationNumber;
-//    private Integer transitionNumber;
-//    private String fieldPath;
-//    private String highlightedText;
-
-    public String getId() {
-        return id;
-    }
-
-    public void setId(String id) {
-        this.id = id;
-    }
-
-    public String getAuthor() {
-        return author;
-    }
-
-    public void setAuthor(String author) {
-        this.author = author;
-    }
-
-    public String getContent() {
-        return content;
-    }
-
-    public void setContent(String content) {
-        this.content = content;
-    }
-
-    public Instant getCreatedDate() {
-        return createdDate;
-    }
-
-    public void setCreatedDate(Instant createdDate) {
-        this.createdDate = createdDate;
-    }
 }
