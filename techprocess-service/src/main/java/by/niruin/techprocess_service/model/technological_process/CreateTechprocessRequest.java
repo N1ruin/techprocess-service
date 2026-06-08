@@ -13,6 +13,9 @@ public record CreateTechprocessRequest(
         @Pattern(regexp = "^[0-9]{5}$")
         String archiveNumber,
         @NotNull
+        @Pattern(regexp = "^[a-zA-Z0-9]+$")
+        String developerUsername,
+        @NotNull
         @Pattern(regexp = "^[а-яА-ЯёЁa-zA-Z-]+$")
         String reviewerFirstName,
         @NotNull

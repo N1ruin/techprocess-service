@@ -1,15 +1,12 @@
 package by.niruin.techprocess_service.service;
 
-import by.niruin.techprocess_service.domain.TechnologicalOperation;
-import by.niruin.techprocess_service.domain.TechnologicalProcess;
-import by.niruin.techprocess_service.domain.TechnologicalTransition;
+import by.niruin.techprocess_service.client.FileServiceClient;
+import by.niruin.techprocess_service.domain.*;
 import by.niruin.techprocess_service.domain.enums.TechnologicalProcessStatus;
 import by.niruin.techprocess_service.exception.*;
 import by.niruin.techprocess_service.kafka.EventPublisher;
 import by.niruin.techprocess_service.repository.TechnologicalProcessRepository;
 import by.niruin.techprocess_service.security.JwtParser;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.core.FindAndModifyOptions;
@@ -19,12 +16,11 @@ import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.Instant;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -34,33 +30,31 @@ public class TechnologicalProcessService {
     private final EventPublisher eventPublisher;
     private final JwtParser jwtParser;
     private final MongoTemplate mongoTemplate;
-    private static final Logger log = LogManager.getLogger(TechnologicalProcessService.class);
+    private final FileServiceClient fileServiceClient;
+    private final TransactionTemplate transactionTemplate;
 
     public TechnologicalProcessService(TechnologicalProcessRepository repository,
                                        TechnologicalProcessFullNumberBuilder fullNumberBuilder,
-                                       EventPublisher eventPublisher,
-                                       JwtParser jwtParser,
-                                       MongoTemplate mongoTemplate) {
+                                       EventPublisher eventPublisher, JwtParser jwtParser, MongoTemplate mongoTemplate,
+                                       FileServiceClient fileServiceClient, TransactionTemplate transactionTemplate) {
         this.repository = repository;
         this.fullNumberBuilder = fullNumberBuilder;
         this.eventPublisher = eventPublisher;
         this.jwtParser = jwtParser;
         this.mongoTemplate = mongoTemplate;
+        this.fileServiceClient = fileServiceClient;
+        this.transactionTemplate = transactionTemplate;
     }
 
     @Transactional
     public TechnologicalProcess save(TechnologicalProcess techprocess) {
         validateUniqueness(techprocess);
-
         fillMetadata(techprocess);
         fillDeveloper(techprocess);
-
         checkSelfReview(techprocess);
 
         var saved = repository.save(techprocess);
-
         eventPublisher.publishTechprocessCreatedEvent(saved);
-
         return saved;
     }
 
@@ -70,23 +64,14 @@ public class TechnologicalProcessService {
                 .orElseThrow(() -> new EntityNotFoundException("Techprocess with number %s not found"
                         .formatted(fullNumber)));
 
-        if (existing.getStatus() == TechnologicalProcessStatus.CANCELLED
-            || existing.getStatus() == TechnologicalProcessStatus.PRODUCTION
-            || existing.getStatus() == TechnologicalProcessStatus.IN_DEVELOPMENT
-            || existing.getStatus() == TechnologicalProcessStatus.IN_REVIEW
-            || existing.getStatus() == TechnologicalProcessStatus.RETURNING_TO_CORRECTION_AFTER_REVIEW
-            || existing.getStatus() == TechnologicalProcessStatus.IN_CORRECTION) {
-            throw new TechprocessCancellationException("It is not possible to cancel the technological process in the status of %s"
-                    .formatted(existing.getStatus().name()));
+        if (existing.getStatus() != TechnologicalProcessStatus.SET_UP) {
+            throw new TechprocessCancellationException(
+                    "It is not possible to cancel the technological process in the status of %s"
+                            .formatted(existing.getStatus().name()));
         }
 
         checkTechprocessOwner(existing);
-
-        var query = Query.query(Criteria.where("_id").is(existing.getId()));
-        var update = new Update()
-                .set("status", TechnologicalProcessStatus.CANCELLED);
-        mongoTemplate.updateFirst(query, update, TechnologicalProcess.class);
-
+        repository.setStatus(existing.getId(), TechnologicalProcessStatus.CANCELLED);
         eventPublisher.publishTechprocessCancelledEvent(existing);
     }
 
@@ -98,17 +83,12 @@ public class TechnologicalProcessService {
 
     public TechnologicalProcess getByNumberAndRevision(String fullNumber, Integer revision) {
         return repository.findByFullNumberAndRevision(fullNumber, revision)
-                .orElseThrow(() -> new EntityNotFoundException("Techprocess with number %s and revision %d not found"
-                        .formatted(fullNumber, revision)));
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "Techprocess with number %s and revision %d not found".formatted(fullNumber, revision)));
     }
 
-    public Page<TechnologicalProcess> getPage(Pageable pageable) {
-        return repository.findAll(pageable);
-    }
-
-    public Page<TechnologicalProcess> getPageByStatus(TechnologicalProcessStatus technologicalProcessStatus,
-                                                      Pageable pageable) {
-        return repository.findAllByStatus(technologicalProcessStatus, pageable);
+    public Page<TechnologicalProcess> getPageByStatus(TechnologicalProcessStatus status, Pageable pageable) {
+        return repository.findAllByStatus(status, pageable);
     }
 
     @Transactional
@@ -139,7 +119,6 @@ public class TechnologicalProcessService {
                     newTechprocess.getOrganizationType(),
                     newTechprocess.getWorkType(),
                     newTechprocess.getArchiveNumber());
-
             update.set("fullNumber", newFullNumber);
         }
 
@@ -164,13 +143,10 @@ public class TechnologicalProcessService {
         }
 
         var query = Query.query(Criteria.where("_id").is(existingTechprocess.getId()));
-        var update = new Update()
-                .push("operations", operation)
-                .set("updatedDate", Instant.now());
+        var update = new Update().push("operations", operation);
 
-        var options = FindAndModifyOptions.options().returnNew(true);
-
-        return mongoTemplate.findAndModify(query, update, options, TechnologicalProcess.class);
+        return mongoTemplate.findAndModify(query, update,
+                FindAndModifyOptions.options().returnNew(true), TechnologicalProcess.class);
     }
 
     @Transactional
@@ -180,42 +156,35 @@ public class TechnologicalProcessService {
         var hasOperation = existingProcess.getOperations().stream()
                 .anyMatch(op -> op.getNumber().equals(operationNumber));
         if (!hasOperation) {
-            throw new EntityNotFoundException("Operation with number %s not found"
-                    .formatted(operationNumber));
+            throw new EntityNotFoundException("Operation with number %s not found".formatted(operationNumber));
         }
 
         checkTechprocessOwner(existingProcess);
-
-        var query = Query.query(
-                Criteria.where("_id").is(existingProcess.getId()));
-        var update = new Update().pull("operations",
-                Query.query(Criteria.where("number").is(operationNumber)));
-        mongoTemplate.updateFirst(query, update, TechnologicalProcess.class);
+        repository.deleteOperation(existingProcess.getId(), operationNumber);
     }
 
-    @Transactional
     public TechnologicalProcess updateOperation(String fullNumber, String operationNumber,
-                                                TechnologicalOperation newOperation) {
-        var existingProcess = getEditableProcess(fullNumber);
-        checkTechprocessOwner(existingProcess);
+                                                TechnologicalOperation newOperation,
+                                                List<MultipartFile> newSketchFiles) {
+        var newSketchFileNames = uploadSketchImages(newSketchFiles);
+        setUploadedFileNamesToSketches(newSketchFileNames, newOperation.getSketchCards());
 
-        var operation = existingProcess.getOperations()
-                .stream()
-                .filter(op -> op.getNumber().equals(operationNumber))
-                .findFirst()
-                .orElseThrow(() -> new EntityNotFoundException("Операция с номером %s не найдена в техпроцессе %s"
-                        .formatted(operationNumber, fullNumber)));
+        return transactionTemplate.execute(status -> {
+            var existingProcess = getEditableProcess(fullNumber);
+            checkTechprocessOwner(existingProcess);
 
-        validateTransitionNumbersUniqueness(newOperation);
+            var oldOperation = getOperationByNumber(operationNumber, existingProcess);
+            validateTransitionNumbersUniqueness(newOperation);
+            updateOperationInDatabase(operationNumber, newOperation, existingProcess);
 
-        var query = Query.query(
-                Criteria.where("_id").is(existingProcess.getId())
-                        .and("operations.number").is(operationNumber));
-        var update = new Update().set("operations.$", newOperation);
+            newSketchFileNames.forEach(eventPublisher::publishFileMovedToPermanentStorageEvent);
 
-        mongoTemplate.updateFirst(query, update, TechnologicalProcess.class);
+            var deletionFileNames = getDeletionFileNames(newOperation, oldOperation);
+            deletionFileNames.forEach(eventPublisher::publishFileDeletedEvent);
 
-        return repository.findById(existingProcess.getId()).get();
+            eventPublisher.publishTechprocessUpdatedEvent(existingProcess);
+            return repository.findById(existingProcess.getId()).get();
+        });
     }
 
     @Transactional
@@ -223,35 +192,212 @@ public class TechnologicalProcessService {
         var existing = getEditableProcess(fullNumber);
         checkTechprocessOwner(existing);
 
-        var query = Query.query(Criteria.where("_id").is(existing.getId()));
-        var update = new Update()
-                .set("status", TechnologicalProcessStatus.IN_REVIEW)
-                .set("sentToReviewDate", Instant.now())
-                .set("updatedDate", Instant.now());
-        mongoTemplate.updateFirst(query, update, TechnologicalProcess.class);
+        var now = Instant.now();
 
+        repository.sendToReview(existing.getId(), TechnologicalProcessStatus.IN_REVIEW, now, now);
         eventPublisher.publishProcessSentToReviewEvent(existing);
     }
 
     @Transactional
     public void approve(String fullNumber) {
         var existing = repository.findFirstByFullNumberAndStatusOrderByRevisionDesc(
-                        fullNumber,
-                        TechnologicalProcessStatus.IN_REVIEW)
-                .orElseThrow(() ->
-                        new EntityNotFoundException("Техпроцесса с номером %s и статусом \"На проверке\" не найдено"
-                                .formatted(fullNumber)));
+                        fullNumber, TechnologicalProcessStatus.IN_REVIEW)
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "Техпроцесса с номером %s и статусом \"На проверке\" не найдено".formatted(fullNumber)));
 
         checkTechprocessReviewer(existing);
 
-        var query = Query.query(Criteria.where("_id").is(existing.getId()));
-        var update = new Update()
-                .set("status", TechnologicalProcessStatus.SET_UP)
-                .set("reviewerApprovedDate", Instant.now());
-
-        mongoTemplate.updateFirst(query, update, TechnologicalProcess.class);
-
+        repository.approve(existing.getId(), TechnologicalProcessStatus.SET_UP, Instant.now());
         eventPublisher.publishProcessSentToReviewEvent(existing);
+    }
+
+    @Transactional
+    public TechnologicalProcess createRevision(String processNumber) {
+        var existing = repository.findByFullNumberAndStatus(processNumber, TechnologicalProcessStatus.SET_UP)
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "Техпроцесс с номером %s в статусе 'Наладочный' не найден".formatted(processNumber)));
+
+        checkTechprocessOwner(existing);
+
+        var copyTechprocess = getCopySetUpTechprocess(existing);
+        copyTechprocess.setStatus(TechnologicalProcessStatus.IN_CORRECTION);
+        copyTechprocess.setRevision(existing.getRevision() + 1);
+
+        return repository.save(copyTechprocess);
+    }
+
+    @Transactional
+    public void addCommentToTechprocess(String processNumber, ReviewComment comment) {
+        var existingProcess = repository.findByFullNumberAndStatus(processNumber, TechnologicalProcessStatus.IN_REVIEW)
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "Техпроцесс с номером %s в статусе 'на проверке' не найден".formatted(processNumber)));
+
+        checkTechprocessReviewer(existingProcess);
+        comment.setUuid(UUID.randomUUID());
+        comment.setCreatedDate(Instant.now());
+
+        repository.addCommentToTechprocess(existingProcess.getId(), comment);
+    }
+
+    @Transactional
+    public void addCommentToOperation(String processNumber, String operationNumber, ReviewComment comment) {
+        var existingProcess = repository.findByFullNumberAndStatus(processNumber, TechnologicalProcessStatus.IN_REVIEW)
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "Техпроцесс с номером %s в статусе 'на проверке' не найден".formatted(processNumber)));
+
+        checkTechprocessReviewer(existingProcess);
+        getOperationByNumber(operationNumber, existingProcess);
+        comment.setUuid(UUID.randomUUID());
+        comment.setCreatedDate(Instant.now());
+
+        repository.addCommentToOperation(existingProcess.getId(), operationNumber, comment);
+    }
+
+    @Transactional
+    public void returnForRevision(String processNumber) {
+        var existing = repository.findByFullNumberAndStatus(processNumber, TechnologicalProcessStatus.IN_REVIEW)
+                .orElseThrow(() -> new EntityNotFoundException(""));
+
+        repository.setStatus(existing.getId(), TechnologicalProcessStatus.IN_CORRECTION);
+        eventPublisher.publishTechprocessReturnedAfterReviewEvent(existing);
+    }
+
+    @Transactional
+    public void resolveComment(String processNumber, UUID commentId) {
+        var existingTechprocess = repository.findByFullNumberAndStatus(processNumber, TechnologicalProcessStatus.IN_CORRECTION)
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "Техпроцесс с номером %s не найден".formatted(processNumber)));
+
+        checkTechprocessOwner(existingTechprocess);
+
+        var existingCommentInTechprocess = existingTechprocess.getReviewComments()
+                .stream()
+                .filter(c -> c.getUuid().equals(commentId))
+                .findFirst();
+
+        if (existingCommentInTechprocess.isPresent()) {
+            repository.removeCommentFromTechprocess(existingTechprocess.getId(), commentId);
+            return;
+        }
+
+        for (var operation : existingTechprocess.getOperations()) {
+            var existingCommentInOperation = operation.getReviewComments()
+                    .stream()
+                    .filter(c -> c.getUuid().equals(commentId))
+                    .findFirst();
+
+            if (existingCommentInOperation.isPresent()) {
+                repository.removeCommentFromOperation(existingTechprocess.getId(), operation.getNumber(), commentId);
+                return;
+            }
+        }
+
+        throw new EntityNotFoundException("Комментария с uuid %s нет в техпроцессе с номером %s"
+                .formatted(commentId, processNumber));
+    }
+
+    private TechnologicalProcess getCopySetUpTechprocess(TechnologicalProcess original) {
+        var copy = new TechnologicalProcess();
+        copy.setPartNumber(original.getPartNumber());
+        copy.setPartName(original.getPartName());
+        copy.setRouteCardNote(original.getRouteCardNote());
+        copy.setArchiveNumber(original.getArchiveNumber());
+        copy.setDeveloperUsername(original.getDeveloperUsername());
+        copy.setDeveloperFirstName(original.getDeveloperFirstName());
+        copy.setDeveloperLastName(original.getDeveloperLastName());
+        copy.setDeveloperFatherName(original.getDeveloperFatherName());
+        copy.setReviewerUsername(original.getReviewerUsername());
+        copy.setReviewerFirstName(original.getReviewerFirstName());
+        copy.setReviewerLastName(original.getReviewerLastName());
+        copy.setReviewerFatherName(original.getReviewerFatherName());
+        copy.setWorkshopCode(original.getWorkshopCode());
+        copy.setOrganizationType(original.getOrganizationType());
+        copy.setWorkType(original.getWorkType());
+        copy.setWorkName(original.getWorkName());
+        copy.setFullNumber(original.getFullNumber());
+        copy.setOperations(original.getOperations().stream().map(this::copyOperation).toList());
+
+        return copy;
+    }
+
+    private TechnologicalOperation copyOperation(TechnologicalOperation o) {
+        var copy = new TechnologicalOperation();
+        copy.setNumber(o.getNumber());
+        copy.setName(o.getName());
+        copy.setIsOnlyForMan(o.getIsOnlyForMan());
+        copy.setArea(o.getArea());
+        copy.setWeight(o.getWeight());
+        copy.setBlankType(o.getBlankType());
+        copy.setEquipment(copyEquipment(o.getEquipment()));
+        copy.setIsSertified(o.getIsSertified());
+        copy.setOperationType(o.getOperationType());
+        copy.setWorkerCodes(new ArrayList<>(o.getWorkerCodes()));
+        copy.setSafetyInstructions(o.getSafetyInstructions().stream()
+                .map(s -> new SafetyInstructionReference(s.getNumber(), s.getIsFromLibrary())).toList());
+        copy.setParts(o.getParts().stream().map(this::copyPart).toList());
+        copy.setMaterials(o.getMaterials().stream().map(this::copyMaterial).toList());
+        copy.setTransitions(o.getTransitions().stream().map(this::copyTransition).toList());
+        copy.setSketchCards(o.getSketchCards().stream().map(this::copySketchCard).toList());
+
+        return copy;
+    }
+
+    private EquipmentReference copyEquipment(EquipmentReference e) {
+        if (e == null) return null;
+        var copy = new EquipmentReference();
+        copy.setName(e.getName());
+        copy.setIndex(e.getIndex());
+        copy.setStandard(e.getStandard());
+        copy.setIsFromLibrary(e.getIsFromLibrary());
+
+        return copy;
+    }
+
+    private PartReference copyPart(PartReference p) {
+        var copy = new PartReference();
+        copy.setName(p.getName());
+        copy.setNumber(p.getNumber());
+        copy.setPosition(p.getPosition());
+        copy.setNote(p.getNote());
+        copy.setQuantity(p.getQuantity());
+        copy.setMaterialUnit(p.getMaterialUnit());
+        copy.setSupplierCode(p.getSupplierCode());
+
+        return copy;
+    }
+
+    private MaterialReference copyMaterial(MaterialReference m) {
+        var copy = new MaterialReference();
+        copy.setName(m.getName());
+        copy.setNote(m.getNote());
+        copy.setPosition(m.getPosition());
+        copy.setSupplierCode(m.getSupplierCode());
+        copy.setUnit(m.getUnit());
+        copy.setConsumptionRate(m.getConsumptionRate());
+        copy.setIsFromLibrary(m.getIsFromLibrary());
+        copy.setRationingUnit(m.getRationingUnit());
+        copy.setStandard(m.getStandard());
+
+        return copy;
+    }
+
+    private TechnologicalTransition copyTransition(TechnologicalTransition t) {
+        var copy = new TechnologicalTransition();
+        copy.setNumber(t.getNumber());
+        copy.setContent(t.getContent());
+        copy.setEquipmentReferences(t.getEquipmentReferences().stream().map(this::copyEquipment).toList());
+
+        return copy;
+    }
+
+    private SketchCard copySketchCard(SketchCard s) {
+        var copy = new SketchCard();
+        copy.setFileName(s.getFileName());
+        copy.setBlankType(s.getBlankType());
+        copy.setSketchSheetNumber(s.getSketchSheetNumber());
+        copy.setOperationNumbers(new ArrayList<>(s.getOperationNumbers()));
+
+        return copy;
     }
 
     private TechnologicalProcess getEditableProcess(String fullNumber) {
@@ -265,50 +411,32 @@ public class TechnologicalProcessService {
     }
 
     private void checkIsNumberExist(String organizationType, String workType, String archiveNumber) {
-        var existing = repository.existsByOrganizationTypeAndWorkTypeAndArchiveNumber(
-                organizationType,
-                workType,
-                archiveNumber);
-
-        if (existing) {
-            throw new EntityAlreadyExistException(("Technological process with organization type %s," +
-                                                   " work type %s, archive number %s existing")
-                    .formatted(organizationType, workType, archiveNumber));
+        if (repository.existsByOrganizationTypeAndWorkTypeAndArchiveNumber(organizationType, workType, archiveNumber)) {
+            throw new EntityAlreadyExistException(
+                    "Technological process with organization type %s, work type %s, archive number %s existing"
+                            .formatted(organizationType, workType, archiveNumber));
         }
     }
 
-    private void checkIsNumberExistInWorkshop(String organizationType, String workType, String
-            archiveNumber, String workshopCode) {
-        var existing = repository.existsByOrganizationTypeAndWorkTypeAndArchiveNumberAndWorkshopCode(
-                organizationType,
-                workType,
-                archiveNumber,
-                workshopCode);
-
-        if (existing) {
-            throw new EntityAlreadyExistException(("Technological process with organization type %s," +
-                                                   " work type %s, archive number %s, workshop code %s existing")
-                    .formatted(organizationType, workType, archiveNumber, workshopCode));
+    private void checkIsNumberExistInWorkshop(String organizationType, String workType,
+                                              String archiveNumber, String workshopCode) {
+        if (repository.existsByOrganizationTypeAndWorkTypeAndArchiveNumberAndWorkshopCode(
+                organizationType, workType, archiveNumber, workshopCode)) {
+            throw new EntityAlreadyExistException(
+                    "Technological process with organization type %s, work type %s, archive number %s, workshop code %s existing"
+                            .formatted(organizationType, workType, archiveNumber, workshopCode));
         }
     }
 
     private void validateUniqueness(TechnologicalProcess techprocess) {
-        checkIsNumberExist(
-                techprocess.getOrganizationType().name(),
-                techprocess.getWorkType().name(),
-                techprocess.getArchiveNumber());
-
-        checkIsNumberExistInWorkshop(
-                techprocess.getOrganizationType().name(),
-                techprocess.getWorkType().name(),
-                techprocess.getArchiveNumber(),
-                techprocess.getWorkshopCode());
+        checkIsNumberExist(techprocess.getOrganizationType().name(),
+                techprocess.getWorkType().name(), techprocess.getArchiveNumber());
+        checkIsNumberExistInWorkshop(techprocess.getOrganizationType().name(),
+                techprocess.getWorkType().name(), techprocess.getArchiveNumber(), techprocess.getWorkshopCode());
     }
 
     private void checkSelfReview(TechnologicalProcess techprocess) {
-        if (techprocess.getDeveloperFirstName().equals(techprocess.getReviewerFirstName()) &&
-            techprocess.getDeveloperLastName().equals(techprocess.getReviewerLastName()) &&
-            techprocess.getDeveloperFatherName().equals(techprocess.getReviewerFatherName())) {
+        if (techprocess.getDeveloperUsername().equals(techprocess.getReviewerUsername())) {
             throw new TechprocessSavingException("Нельзя назначить на проверяющего самого себя");
         }
     }
@@ -317,43 +445,30 @@ public class TechnologicalProcessService {
         techprocess.setStatus(TechnologicalProcessStatus.IN_DEVELOPMENT);
         techprocess.setRevision(0);
         techprocess.setFullNumber(fullNumberBuilder.buildFullNumber(
-                techprocess.getOrganizationType(),
-                techprocess.getWorkType(),
-                techprocess.getArchiveNumber()));
+                techprocess.getOrganizationType(), techprocess.getWorkType(), techprocess.getArchiveNumber()));
     }
 
     private void fillDeveloper(TechnologicalProcess techprocess) {
         techprocess.setDeveloperFirstName(jwtParser.getFirstName());
         techprocess.setDeveloperLastName(jwtParser.getLastName());
         techprocess.setDeveloperFatherName(jwtParser.getFatherName());
+        techprocess.setDeveloperUsername(jwtParser.getUsername());
     }
 
-    private void checkTechprocessOwner(TechnologicalProcess technologicalProcess) {
-        var devFirstName = jwtParser.getFirstName();
-        var devLastName = jwtParser.getLastName();
-        var devFatherName = jwtParser.getFatherName();
-
-        if (!technologicalProcess.getDeveloperFirstName().equals(devFirstName)
-            && !technologicalProcess.getDeveloperLastName().equals(devLastName)
-            && !technologicalProcess.getDeveloperFatherName().equals(devFatherName)) {
+    private void checkTechprocessOwner(TechnologicalProcess tp) {
+        if (!tp.getDeveloperUsername().equals(jwtParser.getUsername())) {
             throw new AuthorizationException("Нельзя выполнить операцию не являясь владельцем техпроцесса");
         }
     }
 
-    private void checkTechprocessReviewer(TechnologicalProcess technologicalProcess) {
-        var reviewerFirstName = jwtParser.getFirstName();
-        var reviewerLastName = jwtParser.getLastName();
-        var reviewerFatherName = jwtParser.getFatherName();
-
-        if (!technologicalProcess.getReviewerFirstName().equals(reviewerFirstName)
-            && !technologicalProcess.getReviewerLastName().equals(reviewerLastName)
-            && !technologicalProcess.getReviewerFatherName().equals(reviewerFatherName)) {
+    private void checkTechprocessReviewer(TechnologicalProcess tp) {
+        if (!tp.getReviewerUsername().equals(jwtParser.getUsername())) {
             throw new AuthorizationException("Нет прав для согласования техпроцесса");
         }
     }
 
     private void validateOperationNumbersUniqueness(List<TechnologicalOperation> operations) {
-        Set<String> numbers = new HashSet<>();
+        var numbers = new HashSet<>();
         for (var op : operations) {
             if (!numbers.add(op.getNumber())) {
                 throw new EntityAlreadyExistException(
@@ -369,15 +484,61 @@ public class TechnologicalProcessService {
 
         var duplicates = operation.getTransitions().stream()
                 .collect(Collectors.groupingBy(TechnologicalTransition::getNumber, Collectors.counting()))
-                .entrySet().stream()
-                .filter(e -> e.getValue() > 1)
-                .map(Map.Entry::getKey)
-                .toList();
-
+                .entrySet().stream().filter(e -> e.getValue() > 1).map(Map.Entry::getKey).toList();
         if (!duplicates.isEmpty()) {
             throw new EntityAlreadyExistException(
-                    "Переходы с номерами %s повторяются в операции %s"
-                            .formatted(duplicates, operation.getNumber()));
+                    "Переходы с номерами %s повторяются в операции %s".formatted(duplicates, operation.getNumber()));
         }
+    }
+
+    private List<String> uploadSketchImages(List<MultipartFile> newSketchFiles) {
+        if (newSketchFiles == null) {
+            return List.of();
+        }
+
+        List<String> newFileNames = new ArrayList<>();
+        for (var image : newSketchFiles) {
+            newFileNames.add(fileServiceClient.uploadImage(image).fileName());
+        }
+
+        return newFileNames;
+    }
+
+    private void setUploadedFileNamesToSketches(List<String> uploadedFileNames, List<SketchCard> sketchCards) {
+        for (var sketchCard : sketchCards) {
+            if (sketchCard.getFileName() == null) {
+                sketchCard.setFileName(uploadedFileNames.getFirst());
+                uploadedFileNames.removeFirst();
+            }
+        }
+    }
+
+    private List<String> getDeletionFileNames(TechnologicalOperation newOperation, TechnologicalOperation oldOperation) {
+        var newFileNames = newOperation.getSketchCards()
+                .stream()
+                .map(SketchCard::getFileName)
+                .toList();
+
+        return oldOperation.getSketchCards().stream()
+                .map(SketchCard::getFileName)
+                .filter(fileName -> fileName != null && !newFileNames.contains(fileName))
+                .toList();
+    }
+
+    private TechnologicalOperation getOperationByNumber(String operationNumber, TechnologicalProcess process) {
+        return process.getOperations().stream()
+                .filter(op -> op.getNumber().equals(operationNumber))
+                .findFirst()
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "Операция с номером %s не найдена в техпроцессе %s".formatted(operationNumber, process.getFullNumber())));
+    }
+
+    private void updateOperationInDatabase(String operationNumber, TechnologicalOperation newOperation,
+                                           TechnologicalProcess existingProcess) {
+        var query = Query.query(Criteria.where("_id").is(existingProcess.getId())
+                .and("operations.number").is(operationNumber));
+        var update = new Update().set("operations.$", newOperation);
+
+        mongoTemplate.updateFirst(query, update, TechnologicalProcess.class);
     }
 }

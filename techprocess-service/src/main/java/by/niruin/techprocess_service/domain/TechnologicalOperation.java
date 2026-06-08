@@ -5,7 +5,7 @@ import by.niruin.techprocess_service.domain.enums.OperationType;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
 import lombok.Setter;
-import org.springframework.data.annotation.AccessType;
+import org.springframework.data.annotation.PersistenceCreator;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -19,8 +19,10 @@ public class TechnologicalOperation {
     @Getter
     @Setter
     private String name;
-    private final List<String> workerCodes = new ArrayList<>();
-    private final List<SafetyInstructionReference> safetyInstructions = new ArrayList<>();
+
+    private final List<String> workerCodes;
+    private final List<SafetyInstructionReference> safetyInstructions;
+
     @Setter
     @Getter
     @JsonProperty("onlyForMan")
@@ -37,9 +39,13 @@ public class TechnologicalOperation {
     @Setter
     @Getter
     private EquipmentReference equipment;
-    private final List<PartReference> parts = new ArrayList<>();
-    private final List<MaterialReference> materials = new ArrayList<>();
-    private final List<TechnologicalTransition> transitions = new ArrayList<>();
+
+    private final List<PartReference> parts;
+    private final List<MaterialReference> materials;
+    private final List<TechnologicalTransition> transitions;
+    private final List<ReviewComment> reviewComments;
+    private final List<SketchCard> sketchCards;
+
     @Setter
     @Getter
     @JsonProperty("sertified")
@@ -47,8 +53,79 @@ public class TechnologicalOperation {
     @Setter
     @Getter
     private OperationType operationType;
-    @Getter
-    private final List<SketchCard> sketchCards = new ArrayList<>();
+
+    public TechnologicalOperation() {
+        this.workerCodes = new ArrayList<>();
+        this.safetyInstructions = new ArrayList<>();
+        this.parts = new ArrayList<>();
+        this.materials = new ArrayList<>();
+        this.transitions = new ArrayList<>();
+        this.reviewComments = new ArrayList<>();
+        this.sketchCards = new ArrayList<>();
+    }
+
+    @PersistenceCreator
+    public TechnologicalOperation(
+            List<String> workerCodes,
+            List<SafetyInstructionReference> safetyInstructions,
+            List<PartReference> parts,
+            List<MaterialReference> materials,
+            List<TechnologicalTransition> transitions,
+            List<ReviewComment> reviewComments,
+            List<SketchCard> sketchCards) {
+
+        this.workerCodes = workerCodes != null ? new ArrayList<>(workerCodes) : new ArrayList<>();
+        this.safetyInstructions = safetyInstructions != null ? new ArrayList<>(safetyInstructions) : new ArrayList<>();
+        this.parts = parts != null ? new ArrayList<>(parts) : new ArrayList<>();
+        this.materials = materials != null ? new ArrayList<>(materials) : new ArrayList<>();
+        this.transitions = transitions != null ? new ArrayList<>(transitions) : new ArrayList<>();
+        this.reviewComments = reviewComments != null ? new ArrayList<>(reviewComments) : new ArrayList<>();
+        this.sketchCards = sketchCards != null ? new ArrayList<>(sketchCards) : new ArrayList<>();
+    }
+
+    public List<TechnologicalTransition> getTransitions() {
+        return Collections.unmodifiableList(transitions);
+    }
+
+    public void setWorkerCodes(List<String> workerCodes) {
+        Objects.requireNonNull(workerCodes);
+        this.workerCodes.clear();
+        this.workerCodes.addAll(workerCodes);
+    }
+
+    public void setSafetyInstructions(List<SafetyInstructionReference> safetyInstructions) {
+        Objects.requireNonNull(safetyInstructions);
+        this.safetyInstructions.clear();
+        this.safetyInstructions.addAll(safetyInstructions);
+    }
+
+    public void setParts(List<PartReference> partReferences) {
+        Objects.requireNonNull(partReferences);
+        this.parts.clear();
+        this.parts.addAll(partReferences);
+    }
+
+    public void setMaterials(List<MaterialReference> materialReferences) {
+        Objects.requireNonNull(materialReferences);
+        this.materials.clear();
+        this.materials.addAll(materialReferences);
+    }
+
+    public void setTransitions(List<TechnologicalTransition> transitions) {
+        Objects.requireNonNull(transitions);
+        this.transitions.clear();
+        this.transitions.addAll(transitions);
+    }
+
+    public void setSketchCards(List<SketchCard> sketchCards) {
+        Objects.requireNonNull(sketchCards);
+        this.sketchCards.clear();
+        this.sketchCards.addAll(sketchCards);
+    }
+
+    public List<ReviewComment> getReviewComments() {
+        return Collections.unmodifiableList(reviewComments);
+    }
 
     public List<String> getWorkerCodes() {
         return Collections.unmodifiableList(workerCodes);
@@ -66,62 +143,13 @@ public class TechnologicalOperation {
         return Collections.unmodifiableList(materials);
     }
 
-    public List<TechnologicalTransition> getTransitions() {
-        return Collections.unmodifiableList(transitions);
+    public List<SketchCard> getSketchCards() {
+        return Collections.unmodifiableList(sketchCards);
     }
 
-    public void setWorkerCodes(List<String> workerCodes) {
-        Objects.requireNonNull(workerCodes);
-
-        this.workerCodes.clear();
-        this.workerCodes.addAll(workerCodes);
-    }
-
-    public void setSafetyInstructions(List<SafetyInstructionReference> safetyInstructions) {
-        Objects.requireNonNull(safetyInstructions);
-
-        this.safetyInstructions.clear();
-        this.safetyInstructions.addAll(safetyInstructions);
-    }
-
-    public void setParts(List<PartReference> partReferences) {
-        Objects.requireNonNull(partReferences);
-
-        this.parts.clear();
-        this.parts.addAll(partReferences);
-    }
-
-    public void setMaterials(List<MaterialReference> materialReferences) {
-        Objects.requireNonNull(materialReferences);
-
-        this.materials.clear();
-        this.materials.addAll(materialReferences);
-    }
-
-    public void setTransitions(List<TechnologicalTransition> transitions) {
-        Objects.requireNonNull(transitions);
-
-        this.transitions.clear();
-        this.transitions.addAll(transitions);
-    }
-
-    public void setSketchCards(List<SketchCard> sketchCards) {
-        Objects.requireNonNull(sketchCards);
-
-        this.sketchCards.clear();
-        this.sketchCards.addAll(sketchCards);
-    }
-
-    public void addTransition(TechnologicalTransition transition) {
-        Objects.requireNonNull(transition);
-
-        this.transitions.add(transition);
-    }
-
-    public void addPart(PartReference partReference) {
-        Objects.requireNonNull(partReference);
-
-        this.parts.add(partReference);
+    public void addReviewComment(ReviewComment comment) {
+        Objects.requireNonNull(comment);
+        this.reviewComments.add(comment);
     }
 
     @Override

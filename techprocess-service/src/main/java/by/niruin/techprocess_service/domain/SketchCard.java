@@ -3,6 +3,7 @@ package by.niruin.techprocess_service.domain;
 import by.niruin.techprocess_service.domain.enums.BlankType;
 import lombok.Getter;
 import lombok.Setter;
+import org.springframework.data.annotation.AccessType;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -25,31 +26,24 @@ public class SketchCard {
         return Collections.unmodifiableList(operationNumbers);
     }
 
+    @AccessType(AccessType.Type.PROPERTY)
     public void setOperationNumbers(List<Integer> operationNumbers) {
         Objects.requireNonNull(operationNumbers);
         this.operationNumbers = new ArrayList<>(operationNumbers);
         Collections.sort(this.operationNumbers);
     }
 
-    public void addOperationNumber(Integer operationNumber) {
-        Objects.requireNonNull(operationNumber);
-
-        if (!this.operationNumbers.contains(operationNumber)) {
-            this.operationNumbers.add(operationNumber);
-            Collections.sort(this.operationNumbers);
-        }
+    @Override
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass()) return false;
+        SketchCard that = (SketchCard) o;
+        return Objects.equals(operationNumbers, that.operationNumbers)
+               && Objects.equals(fileName, that.fileName)
+               && Objects.equals(sketchSheetNumber, that.sketchSheetNumber);
     }
 
-    public void removeOperationNumber(Integer operationNumber) {
-        Objects.requireNonNull(operationNumber);
-        this.operationNumbers.remove(operationNumber);
-    }
-
-    public boolean isTitle() {
-        return blankType != null && blankType.isTitle();
-    }
-
-    public boolean isContinuation() {
-        return blankType != null && blankType.isContinuation();
+    @Override
+    public int hashCode() {
+        return Objects.hash(operationNumbers, fileName, sketchSheetNumber);
     }
 }

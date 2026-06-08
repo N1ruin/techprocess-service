@@ -18,6 +18,10 @@ public class JwtParser {
         return getClaim("father_name");
     }
 
+    public String getUsername() {
+        return getClaim("username");
+    }
+
     public String getClaim(String claimName) {
         JwtAuthenticationToken auth = (JwtAuthenticationToken)
                 SecurityContextHolder.getContext().getAuthentication();

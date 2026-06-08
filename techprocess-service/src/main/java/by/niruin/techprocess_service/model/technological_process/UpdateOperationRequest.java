@@ -5,6 +5,7 @@ import by.niruin.techprocess_service.domain.enums.BlankType;
 import by.niruin.techprocess_service.domain.enums.OperationType;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -46,6 +47,7 @@ public record UpdateOperationRequest(
         @NotNull
         List<TechnologicalTransition> transitions,
 
-        @NotNull
-        List<SketchCard> sketchCards) {
+        List<SketchCard> sketchCards,
+
+        List<MultipartFile> newSketchFiles) {
 }
