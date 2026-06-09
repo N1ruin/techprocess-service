@@ -1,8 +1,5 @@
 package by.niruin.techprocess_service.model.technological_process;
 
-import by.niruin.techprocess_service.domain.*;
-import by.niruin.techprocess_service.domain.enums.BlankType;
-import by.niruin.techprocess_service.domain.enums.OperationType;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import org.springframework.web.multipart.MultipartFile;
@@ -20,18 +17,27 @@ public record UpdateOperationRequest(
 
         List<@Pattern(regexp = "^[0-9]{5}$") String> workerCodes,
 
-        @NotNull
-        List<SafetyInstructionReference> safetyInstructionReferences,
+        List<SafetyInstructionDto> safetyInstructions,
 
-        List<PartReference> partReferences,
+        List<PartDto> parts,
 
-        EquipmentReference equipmentReference,
+        EquipmentDto equipment,
 
         @Pattern(regexp = "^[1-6]$")
         String workerCategory,
 
         @NotNull
-        BlankType blankType,
+        @Pattern(regexp = "^(ROUTE_BLANK_TITLE" +
+                          "|ROUTE_BLANK_CONTINUATION" +
+                          "|SKETCH_BLANK_TITLE_A4" +
+                          "|SKETCH_BLANK_TITLE_A3" +
+                          "|SKETCH_BLANK_CONTINUATION_A4" +
+                          "|SKETCH_BLANK_CONTINUATION_A3" +
+                          "|OPERATION_BLANK_TITLE" +
+                          "|OPERATION_BLANK_CONTINUATION" +
+                          "|CONTROL_BLANK_TITLE" +
+                          "|CONTROL_BLANK_CONTINUATION)$")
+        String blankType,
 
         Double weight,
 
@@ -39,15 +45,14 @@ public record UpdateOperationRequest(
         @NotNull
         Boolean isOnlyForMan,
         @NotNull
-        OperationType operationType,
+        @Pattern(regexp = "^ASSEMBLY|CONTROL$")
+        String operationType,
 
-        @NotNull
-        List<MaterialReference> materialReferences,
+        List<MaterialDto> materials,
 
-        @NotNull
-        List<TechnologicalTransition> transitions,
+        List<TechnologicalTransitionDto> transitions,
 
-        List<SketchCard> sketchCards,
+        List<SketchDto> sketches,
 
         List<MultipartFile> newSketchFiles) {
 }

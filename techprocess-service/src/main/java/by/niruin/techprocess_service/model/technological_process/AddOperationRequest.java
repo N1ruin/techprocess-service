@@ -20,19 +20,29 @@ public record AddOperationRequest(
         List<@Pattern(regexp = "^[0-9]{5}$") String> workerCodes,
 
         @NotNull
-        List<SafetyInstructionReference> safetyInstructionReferences,
+        List<SafetyInstructionDto> safetyInstructions,
 
-        List<PartReference> partReferences,
+        List<PartDto> parts,
 
-        List<MaterialReference> materialReferences,
+        List<MaterialDto> materials,
 
-        EquipmentReference equipmentReference,
+        EquipmentDto equipment,
 
         @Pattern(regexp = "^[1-6]$")
         String workerCategory,
 
         @NotNull
-        BlankType blankType,
+        @Pattern(regexp = "^(ROUTE_BLANK_TITLE" +
+                          "|ROUTE_BLANK_CONTINUATION" +
+                          "|SKETCH_BLANK_TITLE_A4" +
+                          "|SKETCH_BLANK_TITLE_A3" +
+                          "|SKETCH_BLANK_CONTINUATION_A4" +
+                          "|SKETCH_BLANK_CONTINUATION_A3" +
+                          "|OPERATION_BLANK_TITLE" +
+                          "|OPERATION_BLANK_CONTINUATION" +
+                          "|CONTROL_BLANK_TITLE" +
+                          "|CONTROL_BLANK_CONTINUATION)$")
+        String  blankType,
 
         Double weight,
 
@@ -40,5 +50,6 @@ public record AddOperationRequest(
         @NotNull
         Boolean isOnlyForMan,
         @NotNull
-        OperationType operationType) {
+        @Pattern(regexp = "^(ASSEMBLY|CONTROL)$")
+        String operationType) {
 }

@@ -7,7 +7,7 @@ import lombok.*;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class EquipmentReference {
+public class Equipment {
     private String name;
     private String index;
     private String standard;

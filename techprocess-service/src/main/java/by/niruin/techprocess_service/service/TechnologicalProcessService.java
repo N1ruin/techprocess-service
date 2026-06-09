@@ -75,6 +75,7 @@ public class TechnologicalProcessService {
         eventPublisher.publishTechprocessCancelledEvent(existing);
     }
 
+    @Transactional
     public TechnologicalProcess getInStatusSetUpByNumber(String fullNumber) {
         return repository.findFirstByFullNumberAndStatusOrderByRevisionDesc(fullNumber, TechnologicalProcessStatus.SET_UP)
                 .orElseThrow(() -> new EntityNotFoundException(
@@ -163,11 +164,12 @@ public class TechnologicalProcessService {
         repository.deleteOperation(existingProcess.getId(), operationNumber);
     }
 
+    @Transactional
     public TechnologicalProcess updateOperation(String fullNumber, String operationNumber,
                                                 TechnologicalOperation newOperation,
                                                 List<MultipartFile> newSketchFiles) {
         var newSketchFileNames = uploadSketchImages(newSketchFiles);
-        setUploadedFileNamesToSketches(newSketchFileNames, newOperation.getSketchCards());
+        setUploadedFileNamesToSketches(newSketchFileNames, newOperation.getSketches());
 
         return transactionTemplate.execute(status -> {
             var existingProcess = getEditableProcess(fullNumber);
@@ -183,6 +185,7 @@ public class TechnologicalProcessService {
             deletionFileNames.forEach(eventPublisher::publishFileDeletedEvent);
 
             eventPublisher.publishTechprocessUpdatedEvent(existingProcess);
+
             return repository.findById(existingProcess.getId()).get();
         });
     }
@@ -332,19 +335,35 @@ public class TechnologicalProcessService {
         copy.setIsSertified(o.getIsSertified());
         copy.setOperationType(o.getOperationType());
         copy.setWorkerCodes(new ArrayList<>(o.getWorkerCodes()));
-        copy.setSafetyInstructions(o.getSafetyInstructions().stream()
-                .map(s -> new SafetyInstructionReference(s.getNumber(), s.getIsFromLibrary())).toList());
-        copy.setParts(o.getParts().stream().map(this::copyPart).toList());
-        copy.setMaterials(o.getMaterials().stream().map(this::copyMaterial).toList());
-        copy.setTransitions(o.getTransitions().stream().map(this::copyTransition).toList());
-        copy.setSketchCards(o.getSketchCards().stream().map(this::copySketchCard).toList());
+
+        if (!o.getSafetyInstructions().isEmpty()) {
+            copy.setSafetyInstructions(o.getSafetyInstructions().stream()
+                    .map(s -> new SafetyInstruction(s.getNumber(), s.getIsFromLibrary())).toList());
+        }
+        if (!o.getParts().isEmpty()) {
+            copy.setParts(o.getParts().stream().map(this::copyPart).toList());
+        }
+
+        if (!o.getMaterials().isEmpty()) {
+            copy.setMaterials(o.getMaterials().stream().map(this::copyMaterial).toList());
+        }
+        if (!o.getTransitions().isEmpty()) {
+            copy.setTransitions(o.getTransitions().stream().map(this::copyTransition).toList());
+        }
+
+        if (!o.getSketches().isEmpty()) {
+            copy.setSketches(o.getSketches().stream().map(this::copySketchCard).toList());
+        }
 
         return copy;
     }
 
-    private EquipmentReference copyEquipment(EquipmentReference e) {
-        if (e == null) return null;
-        var copy = new EquipmentReference();
+    private Equipment copyEquipment(Equipment e) {
+        if (e == null) {
+            return null;
+        }
+
+        var copy = new Equipment();
         copy.setName(e.getName());
         copy.setIndex(e.getIndex());
         copy.setStandard(e.getStandard());
@@ -353,8 +372,8 @@ public class TechnologicalProcessService {
         return copy;
     }
 
-    private PartReference copyPart(PartReference p) {
-        var copy = new PartReference();
+    private Part copyPart(Part p) {
+        var copy = new Part();
         copy.setName(p.getName());
         copy.setNumber(p.getNumber());
         copy.setPosition(p.getPosition());
@@ -366,8 +385,8 @@ public class TechnologicalProcessService {
         return copy;
     }
 
-    private MaterialReference copyMaterial(MaterialReference m) {
-        var copy = new MaterialReference();
+    private Material copyMaterial(Material m) {
+        var copy = new Material();
         copy.setName(m.getName());
         copy.setNote(m.getNote());
         copy.setPosition(m.getPosition());
@@ -385,13 +404,16 @@ public class TechnologicalProcessService {
         var copy = new TechnologicalTransition();
         copy.setNumber(t.getNumber());
         copy.setContent(t.getContent());
-        copy.setEquipmentReferences(t.getEquipmentReferences().stream().map(this::copyEquipment).toList());
+
+        if (!t.getEquipments().isEmpty()) {
+            copy.setEquipments(t.getEquipments().stream().map(this::copyEquipment).toList());
+        }
 
         return copy;
     }
 
-    private SketchCard copySketchCard(SketchCard s) {
-        var copy = new SketchCard();
+    private Sketch copySketchCard(Sketch s) {
+        var copy = new Sketch();
         copy.setFileName(s.getFileName());
         copy.setBlankType(s.getBlankType());
         copy.setSketchSheetNumber(s.getSketchSheetNumber());
@@ -504,8 +526,8 @@ public class TechnologicalProcessService {
         return newFileNames;
     }
 
-    private void setUploadedFileNamesToSketches(List<String> uploadedFileNames, List<SketchCard> sketchCards) {
-        for (var sketchCard : sketchCards) {
+    private void setUploadedFileNamesToSketches(List<String> uploadedFileNames, List<Sketch> sketches) {
+        for (var sketchCard : sketches) {
             if (sketchCard.getFileName() == null) {
                 sketchCard.setFileName(uploadedFileNames.getFirst());
                 uploadedFileNames.removeFirst();
@@ -514,13 +536,13 @@ public class TechnologicalProcessService {
     }
 
     private List<String> getDeletionFileNames(TechnologicalOperation newOperation, TechnologicalOperation oldOperation) {
-        var newFileNames = newOperation.getSketchCards()
+        var newFileNames = newOperation.getSketches()
                 .stream()
-                .map(SketchCard::getFileName)
+                .map(Sketch::getFileName)
                 .toList();
 
-        return oldOperation.getSketchCards().stream()
-                .map(SketchCard::getFileName)
+        return oldOperation.getSketches().stream()
+                .map(Sketch::getFileName)
                 .filter(fileName -> fileName != null && !newFileNames.contains(fileName))
                 .toList();
     }

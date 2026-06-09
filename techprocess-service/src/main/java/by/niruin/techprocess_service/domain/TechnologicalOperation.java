@@ -21,7 +21,7 @@ public class TechnologicalOperation {
     private String name;
 
     private final List<String> workerCodes;
-    private final List<SafetyInstructionReference> safetyInstructions;
+    private final List<SafetyInstruction> safetyInstructions;
 
     @Setter
     @Getter
@@ -38,13 +38,13 @@ public class TechnologicalOperation {
     private BlankType blankType;
     @Setter
     @Getter
-    private EquipmentReference equipment;
+    private Equipment equipment;
 
-    private final List<PartReference> parts;
-    private final List<MaterialReference> materials;
+    private final List<Part> parts;
+    private final List<Material> materials;
     private final List<TechnologicalTransition> transitions;
     private final List<ReviewComment> reviewComments;
-    private final List<SketchCard> sketchCards;
+    private final List<Sketch> sketches;
 
     @Setter
     @Getter
@@ -61,18 +61,18 @@ public class TechnologicalOperation {
         this.materials = new ArrayList<>();
         this.transitions = new ArrayList<>();
         this.reviewComments = new ArrayList<>();
-        this.sketchCards = new ArrayList<>();
+        this.sketches = new ArrayList<>();
     }
 
     @PersistenceCreator
     public TechnologicalOperation(
             List<String> workerCodes,
-            List<SafetyInstructionReference> safetyInstructions,
-            List<PartReference> parts,
-            List<MaterialReference> materials,
+            List<SafetyInstruction> safetyInstructions,
+            List<Part> parts,
+            List<Material> materials,
             List<TechnologicalTransition> transitions,
             List<ReviewComment> reviewComments,
-            List<SketchCard> sketchCards) {
+            List<Sketch> sketches) {
 
         this.workerCodes = workerCodes != null ? new ArrayList<>(workerCodes) : new ArrayList<>();
         this.safetyInstructions = safetyInstructions != null ? new ArrayList<>(safetyInstructions) : new ArrayList<>();
@@ -80,7 +80,7 @@ public class TechnologicalOperation {
         this.materials = materials != null ? new ArrayList<>(materials) : new ArrayList<>();
         this.transitions = transitions != null ? new ArrayList<>(transitions) : new ArrayList<>();
         this.reviewComments = reviewComments != null ? new ArrayList<>(reviewComments) : new ArrayList<>();
-        this.sketchCards = sketchCards != null ? new ArrayList<>(sketchCards) : new ArrayList<>();
+        this.sketches = sketches != null ? new ArrayList<>(sketches) : new ArrayList<>();
     }
 
     public List<TechnologicalTransition> getTransitions() {
@@ -88,39 +88,52 @@ public class TechnologicalOperation {
     }
 
     public void setWorkerCodes(List<String> workerCodes) {
-        Objects.requireNonNull(workerCodes);
         this.workerCodes.clear();
-        this.workerCodes.addAll(workerCodes);
+
+        if (workerCodes != null) {
+            this.workerCodes.addAll(workerCodes);
+        }
     }
 
-    public void setSafetyInstructions(List<SafetyInstructionReference> safetyInstructions) {
-        Objects.requireNonNull(safetyInstructions);
+    public void setSafetyInstructions(List<SafetyInstruction> safetyInstructions) {
         this.safetyInstructions.clear();
-        this.safetyInstructions.addAll(safetyInstructions);
+
+        if (safetyInstructions != null) {
+            this.safetyInstructions.addAll(safetyInstructions);
+        }
+
     }
 
-    public void setParts(List<PartReference> partReferences) {
-        Objects.requireNonNull(partReferences);
+    public void setParts(List<Part> parts) {
         this.parts.clear();
-        this.parts.addAll(partReferences);
+
+        if (parts != null) {
+            this.parts.addAll(parts);
+        }
     }
 
-    public void setMaterials(List<MaterialReference> materialReferences) {
-        Objects.requireNonNull(materialReferences);
+    public void setMaterials(List<Material> materials) {
         this.materials.clear();
-        this.materials.addAll(materialReferences);
+
+        if (materials != null) {
+            this.materials.addAll(materials);
+        }
     }
 
     public void setTransitions(List<TechnologicalTransition> transitions) {
-        Objects.requireNonNull(transitions);
         this.transitions.clear();
-        this.transitions.addAll(transitions);
+
+        if (transitions != null) {
+            this.transitions.addAll(transitions);
+        }
     }
 
-    public void setSketchCards(List<SketchCard> sketchCards) {
-        Objects.requireNonNull(sketchCards);
-        this.sketchCards.clear();
-        this.sketchCards.addAll(sketchCards);
+    public void setSketches(List<Sketch> sketches) {
+        this.sketches.clear();
+
+        if (sketches != null) {
+            this.sketches.addAll(sketches);
+        }
     }
 
     public List<ReviewComment> getReviewComments() {
@@ -131,20 +144,20 @@ public class TechnologicalOperation {
         return Collections.unmodifiableList(workerCodes);
     }
 
-    public List<SafetyInstructionReference> getSafetyInstructions() {
+    public List<SafetyInstruction> getSafetyInstructions() {
         return Collections.unmodifiableList(safetyInstructions);
     }
 
-    public List<PartReference> getParts() {
+    public List<Part> getParts() {
         return Collections.unmodifiableList(parts);
     }
 
-    public List<MaterialReference> getMaterials() {
+    public List<Material> getMaterials() {
         return Collections.unmodifiableList(materials);
     }
 
-    public List<SketchCard> getSketchCards() {
-        return Collections.unmodifiableList(sketchCards);
+    public List<Sketch> getSketches() {
+        return Collections.unmodifiableList(sketches);
     }
 
     public void addReviewComment(ReviewComment comment) {

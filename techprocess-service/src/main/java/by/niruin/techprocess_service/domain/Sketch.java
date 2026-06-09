@@ -10,11 +10,11 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
-public class SketchCard {
+public class Sketch {
     @Setter
     @Getter
     private BlankType blankType;
-    private List<Integer> operationNumbers = new ArrayList<>();
+    private final List<Integer> operationNumbers = new ArrayList<>();
     @Setter
     @Getter
     private String fileName;
@@ -29,14 +29,15 @@ public class SketchCard {
     @AccessType(AccessType.Type.PROPERTY)
     public void setOperationNumbers(List<Integer> operationNumbers) {
         Objects.requireNonNull(operationNumbers);
-        this.operationNumbers = new ArrayList<>(operationNumbers);
+
+        this.operationNumbers.addAll(operationNumbers);
         Collections.sort(this.operationNumbers);
     }
 
     @Override
     public boolean equals(Object o) {
         if (o == null || getClass() != o.getClass()) return false;
-        SketchCard that = (SketchCard) o;
+        Sketch that = (Sketch) o;
         return Objects.equals(operationNumbers, that.operationNumbers)
                && Objects.equals(fileName, that.fileName)
                && Objects.equals(sketchSheetNumber, that.sketchSheetNumber);

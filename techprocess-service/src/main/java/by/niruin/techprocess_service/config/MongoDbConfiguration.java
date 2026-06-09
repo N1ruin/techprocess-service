@@ -17,6 +17,7 @@ public class MongoDbConfiguration {
     public MongoTransactionManager transactionManager(MongoDatabaseFactory mongoDatabaseFactory) {
         return new MongoTransactionManager(mongoDatabaseFactory);
     }
+
     @Bean
     public MongoClientSettingsBuilderCustomizer uuidCustomizer() {
         return builder -> builder.uuidRepresentation(UuidRepresentation.STANDARD);

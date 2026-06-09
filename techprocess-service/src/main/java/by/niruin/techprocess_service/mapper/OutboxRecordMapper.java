@@ -1,7 +1,6 @@
 package by.niruin.techprocess_service.mapper;
 
 import by.niruin.techprocess_service.domain.TransactionOutboxRecord;
-import by.niruin.techprocess_service.model.event.EventType;
 import by.niruin.techprocess_service.model.event.file.FileDeletedEvent;
 import by.niruin.techprocess_service.model.event.file.MoveFileToPermanentStorageEvent;
 import by.niruin.techprocess_service.model.event.technological_process.*;

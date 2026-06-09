@@ -95,7 +95,6 @@ public class TechnologicalProcessController {
     public ResponseEntity<TechnologicalProcessDto> addOperation(@PathVariable("full-number") String fullNumber,
                                                                 @Valid @RequestBody AddOperationRequest request) {
         var operation = technologicalOperationMapper.toOperation(request);
-        operation.setParts(request.partReferences());
 
         var result = technologicalProcessService.addOperation(fullNumber, operation);
 

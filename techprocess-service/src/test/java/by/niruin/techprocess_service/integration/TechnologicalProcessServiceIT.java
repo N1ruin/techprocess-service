@@ -12,12 +12,9 @@ import by.niruin.techprocess_service.model.technological_process.*;
 import by.niruin.techprocess_service.repository.TechnologicalProcessRepository;
 import by.niruin.techprocess_service.repository.TransactionOutboxRepository;
 import by.niruin.techprocess_service.security.JwtParser;
-import by.niruin.techprocess_service.service.TechnologicalProcessService;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
 import com.github.tomakehurst.wiremock.junit5.WireMockTest;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
@@ -32,8 +29,6 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
-import org.springframework.security.authentication.TestingAuthenticationToken;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -45,7 +40,6 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.mongodb.MongoDBContainer;
 import tools.jackson.databind.ObjectMapper;
 
-import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -60,8 +54,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WireMockTest
 class TechnologicalProcessServiceIT extends BaseIntegrationTest {
-    private static final Logger log = LogManager.getLogger(TechnologicalProcessServiceIT.class);
-
     @Container
     @ServiceConnection
     static MongoDBContainer mongoContainer = new MongoDBContainer("mongo:7.0")
@@ -79,8 +71,6 @@ class TechnologicalProcessServiceIT extends BaseIntegrationTest {
     private ObjectMapper objectMapper;
     @Autowired
     private JwtParser jwtParser;
-    @Autowired
-    private TechnologicalProcessService technologicalProcessService;
     @Autowired
     private TechnologicalOperationMapper technologicalOperationMapper;
     @Autowired
@@ -384,24 +374,20 @@ class TechnologicalProcessServiceIT extends BaseIntegrationTest {
                         jsonPath("$.operations[0].name").value(request.name()),
                         jsonPath("$.operations[0].workerCodes[0]")
                                 .value(request.workerCodes().getFirst()),
-                        jsonPath("$.operations[0].blankType")
-                                .value(request.blankType().name()),
-                        jsonPath("$.operations[0].equipment.name")
-                                .value(request.equipmentReference().getName()),
-                        jsonPath("$.operations[0].parts.length()")
-                                .value(request.partReferences().size()),
-                        jsonPath("$.operations[0].parts[0].name")
-                                .value(request.partReferences().getFirst().getName()),
-                        jsonPath("$.operations[0].materials.length()")
-                                .value(request.materialReferences().size()),
+                        jsonPath("$.operations[0].blankType").value(request.blankType()),
+                        jsonPath("$.operations[0].equipment.name").value(request.equipment().name()),
+                        jsonPath("$.operations[0].parts.length()").value(request.parts().size()),
+                        jsonPath("$.operations[0].parts[0].name").value(request.parts().getFirst().name()),
+                        jsonPath("$.operations[0].materials.length()").value(request.materials().size()),
                         jsonPath("$.operations[0].materials[0].name")
-                                .value(request.materialReferences().getFirst().getName()),
+                                .value(request.materials().getFirst().name()),
                         jsonPath("$.operations[0].safetyInstructions.length()")
-                                .value(request.safetyInstructionReferences().size()),
-                        jsonPath("$.operations[0].transitions.length()").value(0));
+                                .value(request.safetyInstructions().size()),
+                        jsonPath("$.operations[0].transitions.length()").value(0)
+                );
 
-        assertThat(technologicalProcessRepository.findAll().get(0).getOperations()).hasSize(1);
-        assertThat(technologicalProcessRepository.findAll().get(0).getOperations().get(0).getNumber())
+        assertThat(technologicalProcessRepository.findAll().getFirst().getOperations()).hasSize(1);
+        assertThat(technologicalProcessRepository.findAll().getFirst().getOperations().getFirst().getNumber())
                 .isEqualTo(request.number());
 
     }
@@ -519,7 +505,7 @@ class TechnologicalProcessServiceIT extends BaseIntegrationTest {
         var saved = createProcessWithOperationInDb();
         var operation = saved.getOperations().getFirst();
 
-        assertThat(technologicalProcessRepository.findAll().get(0).getOperations().get(0)).isNotNull();
+        assertThat(technologicalProcessRepository.findAll().getFirst().getOperations().getFirst()).isNotNull();
 
         var updateRequest = createUpdateOperationRequest();
 
@@ -527,11 +513,11 @@ class TechnologicalProcessServiceIT extends BaseIntegrationTest {
                         .with(jwtClaims("Евгений", "Лагун", "Сергеевич", "lagun123")))
                 .andExpect(status().isOk());
 
-        assertThat(technologicalProcessRepository.findAll().get(0).getOperations().get(0).getName())
+        assertThat(technologicalProcessRepository.findAll().getFirst().getOperations().getFirst().getName())
                 .isEqualTo(updateRequest.name());
-        assertThat(technologicalProcessRepository.findAll().get(0).getOperations().get(0).getNumber())
+        assertThat(technologicalProcessRepository.findAll().getFirst().getOperations().getFirst().getNumber())
                 .isEqualTo(updateRequest.number());
-        assertThat(technologicalProcessRepository.findAll().get(0).getOperations().get(0).getArea())
+        assertThat(technologicalProcessRepository.findAll().getFirst().getOperations().getFirst().getArea())
                 .isEqualTo(updateRequest.area());
     }
 
@@ -570,7 +556,7 @@ class TechnologicalProcessServiceIT extends BaseIntegrationTest {
     @Test
     void updateOperation_addNewSketches_success() throws Exception {
         var savedProcess = createProcessWithOperationInDb();
-        var existingOperation = savedProcess.getOperations().get(0);
+        var existingOperation = savedProcess.getOperations().getFirst();
 
         var newFileName1 = UUID.randomUUID() + ".png";
         var newFileName2 = UUID.randomUUID() + ".png";
@@ -607,29 +593,29 @@ class TechnologicalProcessServiceIT extends BaseIntegrationTest {
                         .with(jwtClaims("Евгений", "Лагун", "Сергеевич", "lagun123")))
                 .andExpect(status().isOk());
 
-        assertThat(technologicalProcessRepository.findAll().get(0).getOperations().get(0).getSketchCards())
+        assertThat(technologicalProcessRepository.findAll().getFirst().getOperations().getFirst().getSketches())
                 .hasSize(2);
     }
 
     @Test
     void updateOperation_keepExistingSketches_success() throws Exception {
         var savedProcess = createProcessWithOperationInDb();
-        var existingOperation = savedProcess.getOperations().get(0);
+        var existingOperation = savedProcess.getOperations().getFirst();
 
         var existingFileName1 = "existing-sketch-1.png";
         var existingFileName2 = "existing-sketch-2.png";
 
-        var existingSketch1 = new SketchCard();
+        var existingSketch1 = new Sketch();
         existingSketch1.setFileName(existingFileName1);
         existingSketch1.setBlankType(BlankType.OPERATION_BLANK_TITLE);
         existingSketch1.setSketchSheetNumber(1);
 
-        var existingSketch2 = new SketchCard();
+        var existingSketch2 = new Sketch();
         existingSketch2.setFileName(existingFileName2);
         existingSketch2.setBlankType(BlankType.OPERATION_BLANK_CONTINUATION);
         existingSketch2.setSketchSheetNumber(2);
 
-        existingOperation.setSketchCards(List.of(existingSketch1, existingSketch2));
+        existingOperation.setSketches(List.of(existingSketch1, existingSketch2));
         technologicalProcessRepository.save(savedProcess);
 
         var request = createUpdateOperationRequestWithExistingSketches();
@@ -644,15 +630,15 @@ class TechnologicalProcessServiceIT extends BaseIntegrationTest {
     @Test
     void updateOperation_mixedSketches_success() throws Exception {
         var savedProcess = createProcessWithOperationInDb();
-        var existingOperation = savedProcess.getOperations().get(0);
+        var existingOperation = savedProcess.getOperations().getFirst();
 
         var existingFileName = "existing-sketch.png";
-        SketchCard existingSketch = new SketchCard();
+        Sketch existingSketch = new Sketch();
         existingSketch.setFileName(existingFileName);
         existingSketch.setBlankType(BlankType.OPERATION_BLANK_TITLE);
         existingSketch.setSketchSheetNumber(1);
 
-        existingOperation.setSketchCards(List.of(existingSketch));
+        existingOperation.setSketches(List.of(existingSketch));
         technologicalProcessRepository.save(savedProcess);
 
         var newFileName1 = UUID.randomUUID() + ".png";
@@ -691,10 +677,10 @@ class TechnologicalProcessServiceIT extends BaseIntegrationTest {
                 .andExpect(status().isOk());
 
         var updatedProcess = technologicalProcessRepository.findById(savedProcess.getId()).get();
-        var updatedOperation = updatedProcess.getOperations().get(0);
+        var updatedOperation = updatedProcess.getOperations().getFirst();
 
-        assertThat(updatedOperation.getSketchCards()).hasSize(3);
-        assertThat(updatedOperation.getSketchCards().get(0).getFileName()).isEqualTo(existingFileName);
+        assertThat(updatedOperation.getSketches()).hasSize(3);
+        assertThat(updatedOperation.getSketches().getFirst().getFileName()).isEqualTo(existingFileName);
     }
 
     @Test
@@ -853,7 +839,7 @@ class TechnologicalProcessServiceIT extends BaseIntegrationTest {
                 .findFirst().get();
 
         assertThat(updatedOperation.getReviewComments()).hasSize(1);
-        assertThat(updatedOperation.getReviewComments().get(0).getContent()).isEqualTo("Замечание к операции");
+        assertThat(updatedOperation.getReviewComments().getFirst().getContent()).isEqualTo("Замечание к операции");
     }
 
     @Test
@@ -914,10 +900,10 @@ class TechnologicalProcessServiceIT extends BaseIntegrationTest {
         assertThat(updatedProcess).isNotNull();
         assertThat(updatedProcess.getReviewComments()).hasSize(1);
 
-        assertThat(updatedProcess.getReviewComments().get(0).getContent())
+        assertThat(updatedProcess.getReviewComments().getFirst().getContent())
                 .isEqualTo("Замечание к техпроцессу");
 
-        assertThat(updatedProcess.getReviewComments().get(0).getUuid())
+        assertThat(updatedProcess.getReviewComments().getFirst().getUuid())
                 .isNotNull();
     }
 
@@ -1092,6 +1078,7 @@ class TechnologicalProcessServiceIT extends BaseIntegrationTest {
         techprocess.setDeveloperFatherName(devFatherName);
         techprocess.setReviewerUsername("ivanov123");
         techprocess.setRevision(0);
+
         return technologicalProcessRepository.save(techprocess);
     }
 
@@ -1167,20 +1154,20 @@ class TechnologicalProcessServiceIT extends BaseIntegrationTest {
     }
 
     private AddOperationRequest getAddOperationRequest() {
-        var partReference = PartReference.builder()
+        var partDto = PartDto.builder()
                 .name("Вал")
                 .number("2022-1312321-Б")
                 .position("1")
                 .quantity(1)
-                .materialUnit(MaterialUnit.PIECE)
+                .materialUnit(MaterialUnit.PIECE.name())
                 .supplierCode("342")
                 .build();
 
-        var materialReference = MaterialReference.builder()
+        var materialDto = MaterialDto.builder()
                 .name("Литол-24")
                 .standard("ГОСТ 2711-2017")
                 .note("Тестовое описание")
-                .unit(MaterialUnit.KILOGRAM)
+                .unit(MaterialUnit.KILOGRAM.name())
                 .isFromLibrary(true)
                 .supplierCode("384")
                 .position("10")
@@ -1188,7 +1175,7 @@ class TechnologicalProcessServiceIT extends BaseIntegrationTest {
                 .consumptionRate(0.005)
                 .build();
 
-        var equipmentReference = EquipmentReference.builder()
+        var equipmentDto = EquipmentDto.builder()
                 .index("Б517")
                 .isFromLibrary(false)
                 .name("Стол-верстак")
@@ -1198,33 +1185,33 @@ class TechnologicalProcessServiceIT extends BaseIntegrationTest {
                 "005",
                 "Сборочная",
                 List.of("12345"),
-                List.of(new SafetyInstructionReference("101", false)),
-                List.of(partReference),
-                List.of(materialReference),
-                equipmentReference,
+                List.of(new SafetyInstructionDto("101", false)),
+                List.of(partDto),
+                List.of(materialDto),
+                equipmentDto,
                 "4",
-                BlankType.OPERATION_BLANK_TITLE,
+                BlankType.OPERATION_BLANK_TITLE.name(),
                 1.5,
                 1,
                 false,
-                OperationType.ASSEMBLY);
+                OperationType.ASSEMBLY.name());
     }
 
     private AddOperationRequest createAddOperationRequest() {
-        var partReference = PartReference.builder()
+        var partDto = PartDto.builder()
                 .name("Вал")
                 .position("1*")
                 .note("Тестовое описание")
-                .materialUnit(MaterialUnit.PIECE)
+                .materialUnit(MaterialUnit.PIECE.name())
                 .quantity(1)
                 .supplierCode("342")
                 .build();
 
-        var materialReference = MaterialReference.builder()
+        var materialDto = MaterialDto.builder()
                 .name("Литол-24")
                 .standard("ГОСТ 2711-2017")
                 .note("Тестовое описание")
-                .unit(MaterialUnit.KILOGRAM)
+                .unit(MaterialUnit.KILOGRAM.name())
                 .isFromLibrary(true)
                 .supplierCode("384")
                 .position("10")
@@ -1232,7 +1219,7 @@ class TechnologicalProcessServiceIT extends BaseIntegrationTest {
                 .consumptionRate(0.005)
                 .build();
 
-        var equipmentReference = EquipmentReference.builder()
+        var equipmentDto = EquipmentDto.builder()
                 .name("Стол-верстак")
                 .index("1234-1234")
                 .isFromLibrary(false)
@@ -1242,39 +1229,39 @@ class TechnologicalProcessServiceIT extends BaseIntegrationTest {
                 "005",
                 "Сборка",
                 List.of("01490"),
-                List.of(new SafetyInstructionReference("75", false)),
-                List.of(partReference),
-                List.of(materialReference),
-                equipmentReference,
+                List.of(new SafetyInstructionDto("75", false)),
+                List.of(partDto),
+                List.of(materialDto),
+                equipmentDto,
                 "4",
-                BlankType.OPERATION_BLANK_TITLE,
+                BlankType.OPERATION_BLANK_TITLE.name(),
                 4.5,
                 19,
                 false,
-                OperationType.ASSEMBLY);
+                OperationType.ASSEMBLY.name());
     }
 
     private UpdateOperationRequest createUpdateOperationRequest() {
-        var partReference = PartReference.builder()
+        var partDto = PartDto.builder()
                 .name("Кронштейн")
                 .position("3")
                 .note("Тестовое описание")
-                .materialUnit(MaterialUnit.PIECE)
+                .materialUnit(MaterialUnit.PIECE.name())
                 .quantity(2)
                 .supplierCode("385")
                 .build();
 
-        var equipmentReference = EquipmentReference.builder()
+        var equipmentDto = EquipmentDto.builder()
                 .name("Стол-верстак")
                 .index("1234-1234")
                 .isFromLibrary(false)
                 .build();
 
-        var materialReference = MaterialReference.builder()
+        var materialDto = MaterialDto.builder()
                 .name("Масло И-20А")
                 .standard("ГОСТ 2712-2022")
                 .note("Тестовое описание")
-                .unit(MaterialUnit.LITER)
+                .unit(MaterialUnit.LITER.name())
                 .isFromLibrary(true)
                 .supplierCode("322")
                 .position("9")
@@ -1282,51 +1269,52 @@ class TechnologicalProcessServiceIT extends BaseIntegrationTest {
                 .consumptionRate(0.002)
                 .build();
 
-        var transition = new TechnologicalTransition();
-        transition.setNumber(1);
-        transition.setContent("Взять кронштейн и смазать маслом");
+        var transitionDto = TechnologicalTransitionDto.builder()
+                .number(1)
+                .content("Взять кронштейн и смазать маслом")
+                .build();
 
         return new UpdateOperationRequest(
                 "001",
                 "Слесарная",
                 List.of("14092"),
-                List.of(new SafetyInstructionReference("100", false)),
-                List.of(partReference),
-                equipmentReference,
+                List.of(new SafetyInstructionDto("100", false)),
+                List.of(partDto),
+                equipmentDto,
                 "4",
-                BlankType.OPERATION_BLANK_TITLE,
+                BlankType.OPERATION_BLANK_TITLE.name(),
                 10.0,
                 1,
                 true,
-                OperationType.ASSEMBLY,
-                List.of(materialReference),
-                List.of(transition),
+                OperationType.ASSEMBLY.name(),
+                List.of(materialDto),
+                List.of(transitionDto),
                 List.of(),
                 List.of());
     }
 
-    private UpdateOperationRequest createUpdateOperationRequestWithSketches(List<SketchCard> sketches,
+    private UpdateOperationRequest createUpdateOperationRequestWithSketches(List<SketchDto> sketches,
                                                                             List<MultipartFile> newFiles) {
-        var partReference = PartReference.builder()
+        var partDto = PartDto.builder()
                 .name("Кронштейн")
                 .position("3")
                 .note("Тестовое описание")
-                .materialUnit(MaterialUnit.PIECE)
+                .materialUnit(MaterialUnit.PIECE.name())
                 .quantity(2)
                 .supplierCode("385")
                 .build();
 
-        var equipmentReference = EquipmentReference.builder()
+        var equipmentDto = EquipmentDto.builder()
                 .name("Стол-верстак")
                 .index("1234-1234")
                 .isFromLibrary(false)
                 .build();
 
-        var materialReference = MaterialReference.builder()
+        var materialDto = MaterialDto.builder()
                 .name("Масло И-20А")
                 .standard("ГОСТ 2712-2022")
                 .note("Тестовое описание")
-                .unit(MaterialUnit.LITER)
+                .unit(MaterialUnit.LITER.name())
                 .isFromLibrary(true)
                 .supplierCode("322")
                 .position("9")
@@ -1334,67 +1322,70 @@ class TechnologicalProcessServiceIT extends BaseIntegrationTest {
                 .consumptionRate(0.002)
                 .build();
 
-        var transition = new TechnologicalTransition();
-        transition.setNumber(1);
-        transition.setContent("Взять кронштейн и смазать маслом");
+        var transitionDto = TechnologicalTransitionDto.builder()
+                .number(1)
+                .content("Взять кронштейн и смазать маслом")
+                .build();
 
         return new UpdateOperationRequest(
                 "001",
                 "Слесарная",
                 List.of("14092"),
-                List.of(new SafetyInstructionReference("100", false)),
-                List.of(partReference),
-                equipmentReference,
+                List.of(new SafetyInstructionDto("100", false)),
+                List.of(partDto),
+                equipmentDto,
                 "4",
-                BlankType.OPERATION_BLANK_TITLE,
+                BlankType.OPERATION_BLANK_TITLE.name(),
                 10.0,
                 1,
                 true,
-                OperationType.ASSEMBLY,
-                List.of(materialReference),
-                List.of(transition),
+                OperationType.ASSEMBLY.name(),
+                List.of(materialDto),
+                List.of(transitionDto),
                 sketches,
                 newFiles
         );
     }
 
     private UpdateOperationRequest createUpdateOperationRequestWithNewSketches(List<MultipartFile> newFiles) {
-        var sketch1 = new SketchCard();
-        sketch1.setFileName(null);
-        sketch1.setBlankType(BlankType.OPERATION_BLANK_TITLE);
-        sketch1.setSketchSheetNumber(1);
-        sketch1.setOperationNumbers(List.of(1, 2));
+        var sketch1 = SketchDto.builder()
+                .fileName(null)
+                .blankType(BlankType.OPERATION_BLANK_TITLE.name())
+                .sketchSheetNumber(1)
+                .operationNumbers(List.of(1, 2))
+                .build();
 
-        var sketch2 = new SketchCard();
-        sketch2.setFileName(null);
-        sketch2.setBlankType(BlankType.OPERATION_BLANK_CONTINUATION);
-        sketch2.setSketchSheetNumber(2);
-        sketch2.setOperationNumbers(List.of(3, 4));
+        var sketch2 = SketchDto.builder()
+                .fileName(null)
+                .blankType(BlankType.OPERATION_BLANK_CONTINUATION.name())
+                .sketchSheetNumber(2)
+                .operationNumbers(List.of(3, 4))
+                .build();
 
         return createUpdateOperationRequestWithSketches(List.of(sketch1, sketch2), newFiles);
     }
 
     private UpdateOperationRequest createUpdateOperationRequestWithExistingSketches() {
-        var partReference = PartReference.builder()
+        var partDto = PartDto.builder()
                 .name("Кронштейн")
                 .position("3")
                 .note("Тестовое описание")
-                .materialUnit(MaterialUnit.PIECE)
+                .materialUnit(MaterialUnit.PIECE.name())
                 .quantity(2)
                 .supplierCode("385")
                 .build();
 
-        var equipmentReference = EquipmentReference.builder()
+        var equipmentDto = EquipmentDto.builder()
                 .name("Стол-верстак")
                 .index("1234-1234")
                 .isFromLibrary(false)
                 .build();
 
-        var materialReference = MaterialReference.builder()
+        var materialDto = MaterialDto.builder()
                 .name("Масло И-20А")
                 .standard("ГОСТ 2712-2022")
                 .note("Тестовое описание")
-                .unit(MaterialUnit.LITER)
+                .unit(MaterialUnit.LITER.name())
                 .isFromLibrary(true)
                 .supplierCode("322")
                 .position("9")
@@ -1402,36 +1393,39 @@ class TechnologicalProcessServiceIT extends BaseIntegrationTest {
                 .consumptionRate(0.002)
                 .build();
 
-        var transition = new TechnologicalTransition();
-        transition.setNumber(1);
-        transition.setContent("Взять кронштейн и смазать маслом");
+        var transition = TechnologicalTransitionDto.builder()
+                .number(1)
+                .content("Взять кронштейн и смазать маслом")
+                .build();
 
-        var sketch1 = new SketchCard();
-        sketch1.setFileName("existing-sketch-1.png");
-        sketch1.setBlankType(BlankType.OPERATION_BLANK_TITLE);
-        sketch1.setSketchSheetNumber(1);
-        sketch1.setOperationNumbers(List.of(1, 2));
+        var sketch1 = SketchDto.builder()
+                .fileName("existing-sketch-1.png")
+                .blankType(BlankType.OPERATION_BLANK_TITLE.name())
+                .sketchSheetNumber(1)
+                .operationNumbers(List.of(1, 2))
+                .build();
 
-        var sketch2 = new SketchCard();
-        sketch2.setFileName("existing-sketch-2.png");
-        sketch2.setBlankType(BlankType.OPERATION_BLANK_CONTINUATION);
-        sketch2.setSketchSheetNumber(2);
-        sketch2.setOperationNumbers(List.of(3, 4));
+        var sketch2 = SketchDto.builder()
+                .fileName("existing-sketch-2.png")
+                .blankType(BlankType.OPERATION_BLANK_CONTINUATION.name())
+                .sketchSheetNumber(2)
+                .operationNumbers(List.of(3, 4))
+                .build();
 
         return new UpdateOperationRequest(
                 "001",
                 "Слесарная",
                 List.of("14092"),
-                List.of(new SafetyInstructionReference("100", false)),
-                List.of(partReference),
-                equipmentReference,
+                List.of(new SafetyInstructionDto("100", false)),
+                List.of(partDto),
+                equipmentDto,
                 "4",
-                BlankType.OPERATION_BLANK_TITLE,
+                BlankType.OPERATION_BLANK_TITLE.name(),
                 10.0,
                 1,
                 true,
-                OperationType.ASSEMBLY,
-                List.of(materialReference),
+                OperationType.ASSEMBLY.name(),
+                List.of(materialDto),
                 List.of(transition),
                 List.of(sketch1, sketch2),
                 List.of()
@@ -1439,26 +1433,26 @@ class TechnologicalProcessServiceIT extends BaseIntegrationTest {
     }
 
     private UpdateOperationRequest createUpdateOperationRequestWithMixedSketches(List<MultipartFile> newFiles) {
-        var partReference = PartReference.builder()
+        var partDto = PartDto.builder()
                 .name("Кронштейн")
                 .position("3")
                 .note("Тестовое описание")
-                .materialUnit(MaterialUnit.PIECE)
+                .materialUnit(MaterialUnit.PIECE.name())
                 .quantity(2)
                 .supplierCode("385")
                 .build();
 
-        var equipmentReference = EquipmentReference.builder()
+        var equipmentDto = EquipmentDto.builder()
                 .name("Стол-верстак")
                 .index("1234-1234")
                 .isFromLibrary(false)
                 .build();
 
-        var materialReference = MaterialReference.builder()
+        var materialDto = MaterialDto.builder()
                 .name("Масло И-20А")
                 .standard("ГОСТ 2712-2022")
                 .note("Тестовое описание")
-                .unit(MaterialUnit.LITER)
+                .unit(MaterialUnit.LITER.name())
                 .isFromLibrary(true)
                 .supplierCode("322")
                 .position("9")
@@ -1466,42 +1460,46 @@ class TechnologicalProcessServiceIT extends BaseIntegrationTest {
                 .consumptionRate(0.002)
                 .build();
 
-        var transition = new TechnologicalTransition();
-        transition.setNumber(1);
-        transition.setContent("Взять кронштейн и смазать маслом");
+        var transition = TechnologicalTransitionDto.builder()
+                .number(1)
+                .content("Взять кронштейн и смазать маслом")
+                .build();
 
-        var existingSketch = new SketchCard();
-        existingSketch.setFileName("existing-sketch.png");
-        existingSketch.setBlankType(BlankType.OPERATION_BLANK_TITLE);
-        existingSketch.setSketchSheetNumber(1);
-        existingSketch.setOperationNumbers(List.of(1));
+        var existingSketch = SketchDto.builder()
+                .fileName("existing-sketch.png")
+                .blankType(BlankType.OPERATION_BLANK_TITLE.name())
+                .sketchSheetNumber(1)
+                .operationNumbers(List.of(1))
+                .build();
 
-        var newSketch1 = new SketchCard();
-        newSketch1.setFileName(null);
-        newSketch1.setBlankType(BlankType.OPERATION_BLANK_CONTINUATION);
-        newSketch1.setSketchSheetNumber(2);
-        newSketch1.setOperationNumbers(List.of(2, 3));
+        var newSketch1 = SketchDto.builder()
+                .fileName(null)
+                .blankType(BlankType.OPERATION_BLANK_CONTINUATION.name())
+                .sketchSheetNumber(2)
+                .operationNumbers(List.of(2, 3))
+                .build();
 
-        var newSketch2 = new SketchCard();
-        newSketch2.setFileName(null);
-        newSketch2.setBlankType(BlankType.OPERATION_BLANK_TITLE);
-        newSketch2.setSketchSheetNumber(3);
-        newSketch2.setOperationNumbers(List.of(4));
+        var newSketch2 = SketchDto.builder()
+                .fileName(null)
+                .blankType(BlankType.OPERATION_BLANK_TITLE.name())
+                .sketchSheetNumber(3)
+                .operationNumbers(List.of(4))
+                .build();
 
         return new UpdateOperationRequest(
                 "001",
                 "Слесарная",
                 List.of("14092"),
-                List.of(new SafetyInstructionReference("100", false)),
-                List.of(partReference),
-                equipmentReference,
+                List.of(new SafetyInstructionDto("100", false)),
+                List.of(partDto),
+                equipmentDto,
                 "4",
-                BlankType.OPERATION_BLANK_TITLE,
+                BlankType.OPERATION_BLANK_TITLE.name(),
                 10.0,
                 1,
                 true,
-                OperationType.ASSEMBLY,
-                List.of(materialReference),
+                OperationType.ASSEMBLY.name(),
+                List.of(materialDto),
                 List.of(transition),
                 List.of(existingSketch, newSketch1, newSketch2),
                 newFiles
@@ -1509,15 +1507,15 @@ class TechnologicalProcessServiceIT extends BaseIntegrationTest {
     }
 
     private MockMultipartHttpServletRequestBuilder updateOperationRequest(String fullNumber, String operationNumber,
-                                                                          UpdateOperationRequest request) throws Exception {
+                                                                          UpdateOperationRequest request) {
         var builder = multipart(HttpMethod.PUT,
                 "/api/v1/techprocess-service/technological-processes/{full-number}/operations/{operation-number}",
                 fullNumber, operationNumber);
 
         builder.param("number", request.number());
         builder.param("name", request.name());
-        builder.param("blankType", request.blankType().name());
-        builder.param("operationType", request.operationType().name());
+        builder.param("blankType", request.blankType());
+        builder.param("operationType", request.operationType());
         builder.param("isOnlyForMan", String.valueOf(request.isOnlyForMan()));
 
         if (request.workerCategory() != null) {
@@ -1536,67 +1534,67 @@ class TechnologicalProcessServiceIT extends BaseIntegrationTest {
             }
         }
 
-        if (request.safetyInstructionReferences() != null) {
-            for (int i = 0; i < request.safetyInstructionReferences().size(); i++) {
-                builder.param("safetyInstructionReferences[" + i + "].number",
-                        request.safetyInstructionReferences().get(i).getNumber());
-                builder.param("safetyInstructionReferences[" + i + "].fromLibrary",
-                        String.valueOf(request.safetyInstructionReferences().get(i).getIsFromLibrary()));
+        if (request.safetyInstructions() != null) {
+            for (int i = 0; i < request.safetyInstructions().size(); i++) {
+                builder.param("safetyInstructions[" + i + "].number",
+                        request.safetyInstructions().get(i).number());
+                builder.param("safetyInstructions[" + i + "].fromLibrary",
+                        String.valueOf(request.safetyInstructions().get(i).isFromLibrary()));
             }
         }
 
-        if (request.partReferences() != null) {
-            for (int i = 0; i < request.partReferences().size(); i++) {
-                var part = request.partReferences().get(i);
-                builder.param("partReferences[" + i + "].name", part.getName());
-                if (part.getNumber() != null) builder.param("partReferences[" + i + "].number", part.getNumber());
-                if (part.getPosition() != null) builder.param("partReferences[" + i + "].position", part.getPosition());
-                builder.param("partReferences[" + i + "].materialUnit", part.getMaterialUnit().name());
-                builder.param("partReferences[" + i + "].quantity", String.valueOf(part.getQuantity()));
-                builder.param("partReferences[" + i + "].supplierCode", part.getSupplierCode());
-                if (part.getNote() != null) builder.param("partReferences[" + i + "].note", part.getNote());
+        if (request.parts() != null) {
+            for (int i = 0; i < request.parts().size(); i++) {
+                var part = request.parts().get(i);
+                builder.param("parts[" + i + "].name", part.name());
+                if (part.number() != null) builder.param("parts[" + i + "].number", part.number());
+                if (part.position() != null) builder.param("parts[" + i + "].position", part.position());
+                builder.param("parts[" + i + "].materialUnit", part.materialUnit());
+                builder.param("parts[" + i + "].quantity", String.valueOf(part.quantity()));
+                builder.param("parts[" + i + "].supplierCode", part.supplierCode());
+                if (part.note() != null) builder.param("parts[" + i + "].note", part.note());
             }
         }
 
-        if (request.materialReferences() != null) {
-            for (int i = 0; i < request.materialReferences().size(); i++) {
-                var material = request.materialReferences().get(i);
-                builder.param("materialReferences[" + i + "].name", material.getName());
-                builder.param("materialReferences[" + i + "].standard", material.getStandard());
-                builder.param("materialReferences[" + i + "].unit", material.getUnit().name());
-                builder.param("materialReferences[" + i + "].isFromLibrary", String.valueOf(material.getIsFromLibrary()));
-                builder.param("materialReferences[" + i + "].supplierCode", material.getSupplierCode());
-                builder.param("materialReferences[" + i + "].position", material.getPosition());
-                builder.param("materialReferences[" + i + "].rationingUnit", String.valueOf(material.getRationingUnit()));
-                builder.param("materialReferences[" + i + "].consumptionRate", String.valueOf(material.getConsumptionRate()));
-                if (material.getNote() != null) builder.param("materialReferences[" + i + "].note", material.getNote());
+        if (request.materials() != null) {
+            for (int i = 0; i < request.materials().size(); i++) {
+                var material = request.materials().get(i);
+                builder.param("materials[" + i + "].name", material.name());
+                builder.param("materials[" + i + "].standard", material.standard());
+                builder.param("materials[" + i + "].unit", material.unit());
+                builder.param("materials[" + i + "].isFromLibrary", String.valueOf(material.isFromLibrary()));
+                builder.param("materials[" + i + "].supplierCode", material.supplierCode());
+                builder.param("materials[" + i + "].position", material.position());
+                builder.param("materials[" + i + "].rationingUnit", String.valueOf(material.rationingUnit()));
+                builder.param("materials[" + i + "].consumptionRate", String.valueOf(material.consumptionRate()));
+                if (material.note() != null) builder.param("materials[" + i + "].note", material.note());
             }
         }
 
-        if (request.equipmentReference() != null) {
-            builder.param("equipmentReference.name", request.equipmentReference().getName());
-            builder.param("equipmentReference.index", request.equipmentReference().getIndex());
-            builder.param("equipmentReference.isFromLibrary", String.valueOf(request.equipmentReference().getIsFromLibrary()));
-            if (request.equipmentReference().getStandard() != null) {
-                builder.param("equipmentReference.standard", request.equipmentReference().getStandard());
+        if (request.equipment() != null) {
+            builder.param("equipments.name", request.equipment().name());
+            builder.param("equipments.index", request.equipment().index());
+            builder.param("equipments.isFromLibrary", String.valueOf(request.equipment().isFromLibrary()));
+            if (request.equipment().standard() != null) {
+                builder.param("equipments.standard", request.equipment().standard());
             }
         }
 
         if (request.transitions() != null) {
             for (int i = 0; i < request.transitions().size(); i++) {
-                builder.param("transitions[" + i + "].number", String.valueOf(request.transitions().get(i).getNumber()));
-                builder.param("transitions[" + i + "].content", request.transitions().get(i).getContent());
+                builder.param("transitions[" + i + "].number", String.valueOf(request.transitions().get(i).number()));
+                builder.param("transitions[" + i + "].content", request.transitions().get(i).content());
             }
         }
 
-        if (request.sketchCards() != null && !request.sketchCards().isEmpty()) {
-            for (int i = 0; i < request.sketchCards().size(); i++) {
-                var sketch = request.sketchCards().get(i);
-                if (sketch.getFileName() != null) {
-                    builder.param("sketchCards[" + i + "].fileName", sketch.getFileName());
+        if (request.sketches() != null && !request.sketches().isEmpty()) {
+            for (int i = 0; i < request.sketches().size(); i++) {
+                var sketch = request.sketches().get(i);
+                if (sketch.fileName() != null) {
+                    builder.param("sketches[" + i + "].fileName", sketch.fileName());
                 }
-                builder.param("sketchCards[" + i + "].blankType", sketch.getBlankType().name());
-                builder.param("sketchCards[" + i + "].sketchSheetNumber", String.valueOf(sketch.getSketchSheetNumber()));
+                builder.param("sketches[" + i + "].blankType", sketch.blankType());
+                builder.param("sketches[" + i + "].sketchSheetNumber", String.valueOf(sketch.sketchSheetNumber()));
             }
         }
 

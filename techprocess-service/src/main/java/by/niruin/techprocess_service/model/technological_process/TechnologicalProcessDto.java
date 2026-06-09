@@ -1,7 +1,5 @@
 package by.niruin.techprocess_service.model.technological_process;
 
-import by.niruin.techprocess_service.domain.ReviewComment;
-import by.niruin.techprocess_service.domain.TechnologicalOperation;
 import by.niruin.techprocess_service.domain.enums.TechnologicalProcessOrganizationType;
 import by.niruin.techprocess_service.domain.enums.TechnologicalProcessStatus;
 import by.niruin.techprocess_service.domain.enums.TechnologicalProcessWorkType;
@@ -31,6 +29,6 @@ public record TechnologicalProcessDto( String id,
                                        Instant updatedDate,
                                        Instant reviewerApprovedDate,
                                        Instant sentToReviewDate,
-                                       List<TechnologicalOperation> operations,
-                                       List<ReviewComment> reviewComments) {
+                                       List<TechnologicalOperationDto> operations,
+                                       List<ReviewCommentDto> reviewComments) {
 }

@@ -8,12 +8,14 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class PartReference {
+public class Material {
     private String position;
     private String name;
-    private String number;
+    private Boolean isFromLibrary;
     private String supplierCode;
-    private MaterialUnit materialUnit;
-    private Integer quantity;
+    private String standard;
+    private MaterialUnit unit;
+    private Integer rationingUnit;
+    private Double consumptionRate;
     private String note;
 }

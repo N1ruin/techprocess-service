@@ -26,8 +26,6 @@ public interface TechnologicalProcessRepository extends MongoRepository<Technolo
                                                                                String archiveNumber,
                                                                                String workshopCode);
 
-    Optional<TechnologicalProcess> findFirstByArchiveNumberOrderByRevisionDesc(String fullNumber);
-
     Optional<TechnologicalProcess> findByFullNumberAndRevision(String fullName, int revision);
 
     Optional<TechnologicalProcess> findFirstByFullNumberAndStatusOrderByRevisionDesc(String fullNumber,

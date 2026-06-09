@@ -1,6 +1,5 @@
 package by.niruin.techprocess_service.domain;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.data.annotation.AccessType;
@@ -17,18 +16,21 @@ public class TechnologicalTransition {
     @Setter
     @Getter
     private String content;
-    private final List<EquipmentReference> equipmentReferences = new ArrayList<>();
-    @JsonProperty("sertified")
+    private final List<Equipment> equipments = new ArrayList<>();
+    @Getter
+    @Setter
     private Boolean isSertified;
 
-    public List<EquipmentReference> getEquipmentReferences() {
-        return Collections.unmodifiableList(equipmentReferences);
+    public List<Equipment> getEquipments() {
+        return Collections.unmodifiableList(equipments);
     }
 
     @AccessType(AccessType.Type.PROPERTY)
-    public void setEquipmentReferences(List<EquipmentReference> equipmentReferences) {
-        Objects.requireNonNull(equipmentReferences);
-        this.equipmentReferences.clear();
-        this.equipmentReferences.addAll(equipmentReferences);
+    public void setEquipments(List<Equipment> equipments) {
+        this.equipments.clear();
+
+        if (equipments != null) {
+            this.equipments.addAll(equipments);
+        }
     }
 }
