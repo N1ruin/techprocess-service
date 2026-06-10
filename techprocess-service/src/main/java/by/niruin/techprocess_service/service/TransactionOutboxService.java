@@ -7,7 +7,6 @@ import by.niruin.techprocess_service.repository.TransactionOutboxRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.support.TransactionTemplate;
 import tools.jackson.databind.ObjectMapper;
 
 import java.time.Instant;
@@ -31,14 +30,12 @@ public class TransactionOutboxService {
 
     public <T extends MessageBrokerEvent, O> TransactionOutboxRecord createOutboxRecord(EventType eventType, O object,
                                                                                         Function<O, T> eventMapper) {
-        var outboxRecord = new TransactionOutboxRecord();
-        outboxRecord.setEventType(eventType);
-
         var event = eventMapper.apply(object);
-        outboxRecord.setPayload(objectMapper.writeValueAsString(event));
-        outboxRecord.setTimestamp(Instant.now());
 
-        return outboxRecord;
+        return TransactionOutboxRecord.builder()
+                .eventType(eventType)
+                .payload(objectMapper.writeValueAsString(event))
+                .timestamp(Instant.now()).build();
     }
 
     public Page<TransactionOutboxRecord> findBatchRecords(int batchSize) {

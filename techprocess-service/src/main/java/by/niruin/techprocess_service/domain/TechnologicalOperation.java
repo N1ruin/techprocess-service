@@ -101,7 +101,6 @@ public class TechnologicalOperation {
         if (safetyInstructions != null) {
             this.safetyInstructions.addAll(safetyInstructions);
         }
-
     }
 
     public void setParts(List<Part> parts) {
@@ -133,6 +132,14 @@ public class TechnologicalOperation {
 
         if (sketches != null) {
             this.sketches.addAll(sketches);
+        }
+    }
+
+    public void setReviewComments(List<ReviewComment> comments) {
+        this.reviewComments.clear();
+
+        if (comments != null) {
+            this.reviewComments.addAll(comments);
         }
     }
 

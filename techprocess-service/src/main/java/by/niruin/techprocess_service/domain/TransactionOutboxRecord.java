@@ -1,7 +1,9 @@
 package by.niruin.techprocess_service.domain;
 
 import by.niruin.techprocess_service.model.event.EventType;
+import lombok.Builder;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
@@ -10,6 +12,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import java.time.Instant;
 
 @Getter
+@Builder
 @Document(collection = "outbox_records")
 public class TransactionOutboxRecord {
     @Id
@@ -21,5 +24,4 @@ public class TransactionOutboxRecord {
     @Setter
     @CreatedDate
     private Instant timestamp;
-
 }

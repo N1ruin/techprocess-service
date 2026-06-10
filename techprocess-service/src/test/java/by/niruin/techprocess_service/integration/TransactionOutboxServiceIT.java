@@ -28,21 +28,16 @@ import static org.junit.jupiter.api.Assertions.*;
 
 @Import(SchedulerConfig.class)
 class TransactionOutboxServiceIT extends BaseIntegrationTest {
-
     @Container
     @ServiceConnection
     static MongoDBContainer mongoContainer = new MongoDBContainer("mongo:7.0")
             .withReplicaSet();
-
     @Autowired
     private TransactionOutboxService outboxService;
-
     @Autowired
     private TransactionOutboxRepository outboxRepository;
-
     @Autowired
     private ObjectMapper objectMapper;
-
     @Autowired
     private SchedulingOutboxProperties schedulingOutboxProperties;
 
@@ -311,19 +306,20 @@ class TransactionOutboxServiceIT extends BaseIntegrationTest {
     }
 
     private TransactionOutboxRecord createTestOutboxRecord() {
-        var record = new TransactionOutboxRecord();
-        record.setEventType(EventType.TECHNOLOGICAL_PROCESS_CREATED);
-        record.setPayload("{\"test\":\"payload\"}");
-        record.setTimestamp(Instant.now());
-        return record;
+        return TransactionOutboxRecord.builder()
+                .eventType(EventType.TECHNOLOGICAL_PROCESS_CREATED)
+                .payload("{\"test\":\"payload\"}")
+                .timestamp(Instant.now()).build();
     }
 
     private TransactionOutboxRecord createAndSaveOutboxRecord(EventType eventType) {
-        var record = new TransactionOutboxRecord();
-        record.setEventType(eventType);
-        record.setPayload("{\"test\":\"payload\"}");
-        record.setTimestamp(Instant.now());
+        var record = TransactionOutboxRecord.builder()
+                .eventType(eventType)
+                .payload("{\"test\":\"payload\"}")
+                .timestamp(Instant.now()).build();
+
         outboxService.save(record);
+
         return record;
     }
 

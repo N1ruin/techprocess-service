@@ -130,4 +130,12 @@ public class TechnologicalProcess {
         Objects.requireNonNull(comment);
         this.reviewComments.add(comment);
     }
+
+    public void setReviewComments(List<ReviewComment> comments) {
+        this.reviewComments.clear();
+
+        if (comments != null) {
+            this.reviewComments.addAll(comments);
+        }
+    }
 }
