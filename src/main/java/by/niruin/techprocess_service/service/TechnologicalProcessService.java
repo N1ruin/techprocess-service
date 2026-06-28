@@ -7,6 +7,13 @@ import by.niruin.techprocess_service.exception.*;
 import by.niruin.techprocess_service.kafka.EventPublisher;
 import by.niruin.techprocess_service.repository.TechnologicalProcessRepository;
 import by.niruin.techprocess_service.security.JwtParser;
+import by.niruin.techprocess_service.util.TechnologicalProcessFullNumberBuilder;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.retry.annotation.Retry;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.CachePut;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.core.FindAndModifyOptions;
@@ -47,6 +54,7 @@ public class TechnologicalProcessService {
     }
 
     @Transactional
+    @CachePut(value = "techprocess", key = "#result.fullNumber")
     public TechnologicalProcess save(TechnologicalProcess techprocess) {
         validateUniqueness(techprocess);
         fillMetadata(techprocess);
@@ -55,10 +63,12 @@ public class TechnologicalProcessService {
 
         var saved = repository.save(techprocess);
         eventPublisher.publishTechprocessCreatedEvent(saved);
+
         return saved;
     }
 
     @Transactional
+    @CacheEvict(value = "techprocess", key = "#fullNumber")
     public void cancel(String fullNumber) {
         var existing = repository.findFirstByFullNumberOrderByRevisionDesc(fullNumber)
                 .orElseThrow(() -> new EntityNotFoundException("Techprocess with number %s not found"
@@ -75,30 +85,38 @@ public class TechnologicalProcessService {
         eventPublisher.publishTechprocessCancelledEvent(existing);
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
+    @Cacheable(value = "techprocess", key = "#fullNumber")
     public TechnologicalProcess getInStatusSetUpByNumber(String fullNumber) {
         return repository.findFirstByFullNumberAndStatusOrderByRevisionDesc(fullNumber, TechnologicalProcessStatus.SET_UP)
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Techprocess with number %s not found".formatted(fullNumber)));
     }
 
+    @Transactional(readOnly = true)
+    @Cacheable(value = "techprocess", key = "#fullNumber + '-' + #revision")
     public TechnologicalProcess getByNumberAndRevision(String fullNumber, Integer revision) {
         return repository.findByFullNumberAndRevision(fullNumber, revision)
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Techprocess with number %s and revision %d not found".formatted(fullNumber, revision)));
     }
 
+    @Transactional(readOnly = true)
     public Page<TechnologicalProcess> getPageByStatus(TechnologicalProcessStatus status, Pageable pageable) {
         return repository.findAllByStatus(status, pageable);
     }
 
     @Transactional
+    @Caching(
+            put = @CachePut(value = "techprocess", key = "#result.fullNumber"),
+            evict = @CacheEvict(value = "techprocess", key = "#fullNumber")
+    )
     public TechnologicalProcess update(String fullNumber, TechnologicalProcess newTechprocess) {
         var existing = getEditableProcess(fullNumber);
         checkTechprocessOwner(existing);
 
         if (existing.getStatus() == TechnologicalProcessStatus.IN_CORRECTION
-            && !existing.getWorkshopCode().equals(newTechprocess.getWorkshopCode())) {
+                && !existing.getWorkshopCode().equals(newTechprocess.getWorkshopCode())) {
             throw new TechprocessUpdatingException("Нельзя изменить цех при корректировке");
         }
 
@@ -130,6 +148,7 @@ public class TechnologicalProcessService {
     }
 
     @Transactional
+    @CachePut(value = "techprocess", key = "#result.fullNumber")
     public TechnologicalProcess addOperation(String fullNumber, TechnologicalOperation operation) {
         var existingTechprocess = getEditableProcess(fullNumber);
         checkTechprocessOwner(existingTechprocess);
@@ -151,6 +170,7 @@ public class TechnologicalProcessService {
     }
 
     @Transactional
+    @CachePut(value = "techprocess", key = "#fullNumber")
     public void deleteOperation(String fullNumber, String operationNumber) {
         var existingProcess = getEditableProcess(fullNumber);
 
@@ -165,6 +185,7 @@ public class TechnologicalProcessService {
     }
 
     @Transactional
+    @CachePut(value = "techprocess", key = "#result.fullNumber")
     public TechnologicalProcess updateOperation(String fullNumber, String operationNumber,
                                                 TechnologicalOperation newOperation,
                                                 List<MultipartFile> newSketchFiles) {
@@ -191,6 +212,7 @@ public class TechnologicalProcessService {
     }
 
     @Transactional
+    @CachePut(value = "techprocess", key = "#fullNumber")
     public void sendToReview(String fullNumber) {
         var existing = getEditableProcess(fullNumber);
         checkTechprocessOwner(existing);
@@ -202,6 +224,7 @@ public class TechnologicalProcessService {
     }
 
     @Transactional
+    @CachePut(value = "techprocess", key = "#fullNumber")
     public void approve(String fullNumber) {
         var existing = repository.findFirstByFullNumberAndStatusOrderByRevisionDesc(
                         fullNumber, TechnologicalProcessStatus.IN_REVIEW)
@@ -215,10 +238,11 @@ public class TechnologicalProcessService {
     }
 
     @Transactional
-    public TechnologicalProcess createRevision(String processNumber) {
-        var existing = repository.findByFullNumberAndStatus(processNumber, TechnologicalProcessStatus.SET_UP)
+    @CachePut(value = "techprocess", key = "#result.fullNumber")
+    public TechnologicalProcess createRevision(String fullNumber) {
+        var existing = repository.findByFullNumberAndStatus(fullNumber, TechnologicalProcessStatus.SET_UP)
                 .orElseThrow(() -> new EntityNotFoundException(
-                        "Техпроцесс с номером %s в статусе 'Наладочный' не найден".formatted(processNumber)));
+                        "Техпроцесс с номером %s в статусе 'Наладочный' не найден".formatted(fullNumber)));
 
         checkTechprocessOwner(existing);
 
@@ -243,6 +267,7 @@ public class TechnologicalProcessService {
     }
 
     @Transactional
+    @CacheEvict(value = "techprocess", key = "#processNumber")
     public void addCommentToOperation(String processNumber, String operationNumber, ReviewComment comment) {
         var existingProcess = repository.findByFullNumberAndStatus(processNumber, TechnologicalProcessStatus.IN_REVIEW)
                 .orElseThrow(() -> new EntityNotFoundException(
@@ -257,6 +282,7 @@ public class TechnologicalProcessService {
     }
 
     @Transactional
+    @CacheEvict(value = "techprocess", key = "#processNumber")
     public void returnForRevision(String processNumber) {
         var existing = repository.findByFullNumberAndStatus(processNumber, TechnologicalProcessStatus.IN_REVIEW)
                 .orElseThrow(() -> new EntityNotFoundException(""));
@@ -266,6 +292,7 @@ public class TechnologicalProcessService {
     }
 
     @Transactional
+    @CacheEvict(value = "techprocess", key = "#processNumber")
     public void resolveComment(String processNumber, UUID commentId) {
         var existingTechprocess = repository.findByFullNumberAndStatus(processNumber, TechnologicalProcessStatus.IN_CORRECTION)
                 .orElseThrow(() -> new EntityNotFoundException(

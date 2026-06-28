@@ -91,6 +91,16 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
     }
 
+    @ExceptionHandler(FileUploadException.class)
+    public ResponseEntity<ErrorResponse> handleFileUploadException(FileUploadException exception) {
+        log.error("Exception: {}", exception.getMessage(), exception);
+
+        var errorResponse = new ErrorResponse("File upload error", exception.getMessage(),
+                exception.getHttpStatus());
+
+        return ResponseEntity.status(exception.getHttpStatus()).body(errorResponse);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleException(Exception exception) {
         log.error("Unknown exception occurred: {}", exception.getMessage(), exception);

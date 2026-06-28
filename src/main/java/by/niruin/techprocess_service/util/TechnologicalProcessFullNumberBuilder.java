@@ -1,4 +1,4 @@
-package by.niruin.techprocess_service.service;
+package by.niruin.techprocess_service.util;
 
 import by.niruin.techprocess_service.domain.enums.TechnologicalProcessOrganizationType;
 import by.niruin.techprocess_service.domain.enums.TechnologicalProcessWorkType;

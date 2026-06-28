@@ -3,32 +3,42 @@ server:
 
 logging:
   level:
-    root: ERROR
+    root: INFO
 
 scheduler:
   outbox:
     batch-size: 10
     millis-delay: 5000
 
+file-service:
+  url: fileService:8087
+  path: /api/v1/file-service/files/images
+
 spring:
   application:
     name: techprocess-service
-  config:
-    activate:
-      on-profile: docker
+
+  mongodb:
+    uri: mongodb://mongodb:27017/techprocess-service
+
   data:
     mongodb:
-      uri: mongodb://admin:admin@mongodb:27017/techprocess-service?authSource=admin
-      auto-index-creation: true
-      uuid-representation: standard
+      uri: mongodb://mongodb:27017/techprocess-service
     redis:
       host: redis
+      port: 6379
+
+  cloud:
+    openfeign:
+      circuitbreaker:
+        enabled: true
+
   cache:
     type: redis
     redis:
-      time-to-live: 60m
+      time-to-live: 10m
       cache-null-values: false
-  # Брокер и безопасность
+
   kafka:
     bootstrap-servers: kafka:9092
     producer:
@@ -37,6 +47,7 @@ spring:
       value-serializer: org.springframework.kafka.support.serializer.JacksonJsonSerializer
       properties:
         spring.json.trusted.packages: '*'
+
   security:
     oauth2:
       resourceserver:
@@ -65,3 +76,31 @@ management:
         enabled: true
     tags:
       application: techprocess-service
+
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 5s
+        permitted-number-of-calls-in-half-open-state: 3
+        slow-call-duration-threshold: 2s
+        slow-call-rate-threshold: 50
+        register-health-indicator: true
+    instances:
+      techprocessService:
+        baseConfig: default
+
+  retry:
+    configs:
+      default:
+        max-attempts: 3
+        wait-duration: 1s
+        retry-exceptions:
+          - org.springframework.web.client.HttpServerErrorException
+          - java.io.IOException
+          - java.net.SocketTimeoutException
+    instances:
+      techprocessService:
+        baseConfig: default

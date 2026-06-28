@@ -10,5 +10,4 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public class SchedulingOutboxProperties {
     private Integer batchSize;
     private Integer millisDelay;
-
 }

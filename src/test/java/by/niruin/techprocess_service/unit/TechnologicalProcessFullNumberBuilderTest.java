@@ -2,7 +2,7 @@ package by.niruin.techprocess_service.unit;
 
 import by.niruin.techprocess_service.domain.enums.TechnologicalProcessOrganizationType;
 import by.niruin.techprocess_service.domain.enums.TechnologicalProcessWorkType;
-import by.niruin.techprocess_service.service.TechnologicalProcessFullNumberBuilder;
+import by.niruin.techprocess_service.util.TechnologicalProcessFullNumberBuilder;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;

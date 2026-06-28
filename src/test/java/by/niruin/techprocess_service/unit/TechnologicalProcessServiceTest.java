@@ -11,7 +11,7 @@ import by.niruin.techprocess_service.exception.*;
 import by.niruin.techprocess_service.kafka.EventPublisher;
 import by.niruin.techprocess_service.repository.TechnologicalProcessRepository;
 import by.niruin.techprocess_service.security.JwtParser;
-import by.niruin.techprocess_service.service.TechnologicalProcessFullNumberBuilder;
+import by.niruin.techprocess_service.util.TechnologicalProcessFullNumberBuilder;
 import by.niruin.techprocess_service.service.TechnologicalProcessService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
