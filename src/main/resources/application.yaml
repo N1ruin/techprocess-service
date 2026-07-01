@@ -1,106 +1,23 @@
-server:
-  port: 8083
-
-logging:
-  level:
-    root: INFO
-
-scheduler:
-  outbox:
-    batch-size: 10
-    millis-delay: 5000
-
-file-service:
-  url: fileService:8087
-  path: /api/v1/file-service/files/images
-
 spring:
   application:
     name: techprocess-service
+  config:
+    import: optional:configserver:http://config-server:8888
 
-  mongodb:
-    uri: mongodb://mongodb:27017/techprocess-service
-
-  data:
-    mongodb:
-      uri: mongodb://mongodb:27017/techprocess-service
-    redis:
-      host: redis
-      port: 6379
-
-  cloud:
-    openfeign:
-      circuitbreaker:
-        enabled: true
-
-  cache:
-    type: redis
-    redis:
-      time-to-live: 10m
-      cache-null-values: false
-
-  kafka:
-    bootstrap-servers: kafka:9092
-    producer:
-      retries: 3
-      key-serializer: org.apache.kafka.common.serialization.StringSerializer
-      value-serializer: org.springframework.kafka.support.serializer.JacksonJsonSerializer
-      properties:
-        spring.json.trusted.packages: '*'
-
-  security:
-    oauth2:
-      resourceserver:
-        jwt:
-          issuer-uri: http://keycloak:8080/realms/techprocess-service-realm
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://discovery-server:8761/eureka/
+  instance:
+    prefer-ip-address: true
+    lease-renewal-interval-in-seconds: 10
+    lease-expiration-duration-in-seconds: 30
 
 management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics,prometheus
-      base-path: /actuator
+        include: health,info,refresh
   endpoint:
     health:
       show-details: always
-      show-components: always
-      probes:
-        enabled: true
-    metrics:
-      enabled: true
-    prometheus:
-      enabled: true
-  metrics:
-    export:
-      prometheus:
-        enabled: true
-    tags:
-      application: techprocess-service
-
-resilience4j:
-  circuitbreaker:
-    configs:
-      default:
-        sliding-window-size: 10
-        failure-rate-threshold: 50
-        wait-duration-in-open-state: 5s
-        permitted-number-of-calls-in-half-open-state: 3
-        slow-call-duration-threshold: 2s
-        slow-call-rate-threshold: 50
-        register-health-indicator: true
-    instances:
-      techprocessService:
-        baseConfig: default
-
-  retry:
-    configs:
-      default:
-        max-attempts: 3
-        wait-duration: 1s
-        retry-exceptions:
-          - org.springframework.web.client.HttpServerErrorException
-          - java.io.IOException
-          - java.net.SocketTimeoutException
-    instances:
-      techprocessService:
-        baseConfig: default
