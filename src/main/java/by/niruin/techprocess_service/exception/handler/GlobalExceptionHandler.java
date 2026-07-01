@@ -2,6 +2,7 @@ package by.niruin.techprocess_service.exception.handler;
 
 import by.niruin.techprocess_service.exception.*;
 import by.niruin.techprocess_service.model.error.ErrorResponse;
+import feign.FeignException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.http.HttpStatus;
@@ -9,19 +10,25 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import tools.jackson.databind.ObjectMapper;
 
 import java.util.stream.Collectors;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
     private static final Logger log = LogManager.getLogger(GlobalExceptionHandler.class);
+    private final ObjectMapper objectMapper;
+
+    public GlobalExceptionHandler(ObjectMapper objectMapper) {
+        this.objectMapper = objectMapper;
+    }
 
     @ExceptionHandler(EntityNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleEntityNotFound(EntityNotFoundException exception) {
         log.warn("Exception: {}", exception.getMessage());
 
-        var errorResponse = new ErrorResponse("Entity not found", exception.getMessage(),
-                HttpStatus.NOT_FOUND.value());
+        var errorResponse = new ErrorResponse("Entity not found", "The requested techprocess does not exist" +
+                " or has been removed", HttpStatus.NOT_FOUND.value());
 
         return new ResponseEntity<>(errorResponse, HttpStatus.NOT_FOUND);
     }
@@ -30,7 +37,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleEntityAlready(EntityAlreadyExistException exception) {
         log.warn("Exception: {}", exception.getMessage(), exception);
 
-        var errorResponse = new ErrorResponse("Entity already exist", exception.getMessage(),
+        var errorResponse = new ErrorResponse("Entity conflict", "A record with the provided data already exists",
                 HttpStatus.CONFLICT.value());
 
         return new ResponseEntity<>(errorResponse, HttpStatus.CONFLICT);
@@ -55,8 +62,8 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleTechprocessCancellationException(TechprocessCancellationException exception) {
         log.warn("Exception: {}", exception.getMessage(), exception);
 
-        var errorResponse = new ErrorResponse("Techprocess cancellation exception", exception.getMessage(),
-                HttpStatus.CONFLICT.value());
+        var errorResponse = new ErrorResponse("Techprocess cancellation exception", "Unable to cancel the " +
+                "techprocess. Please try again", HttpStatus.CONFLICT.value());
 
         return new ResponseEntity<>(errorResponse, HttpStatus.CONFLICT);
     }
@@ -65,8 +72,8 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleSavingException(TechprocessSavingException exception) {
         log.warn("Exception: {}", exception.getMessage(), exception);
 
-        var errorResponse = new ErrorResponse("Entity already exist", exception.getMessage(),
-                HttpStatus.BAD_REQUEST.value());
+        var errorResponse = new ErrorResponse("Save failed", "Unable to save the data. " +
+                "Please check your input and try again", HttpStatus.BAD_REQUEST.value());
 
         return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
     }
@@ -75,40 +82,69 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleAuthorizationException(AuthorizationException exception) {
         log.warn("Exception: {}", exception.getMessage(), exception);
 
-        var errorResponse = new ErrorResponse("Dont have permission", exception.getMessage(),
+        var errorResponse = new ErrorResponse("Access Denied", "You don't have permission to perform this action",
                 HttpStatus.UNAUTHORIZED.value());
 
         return new ResponseEntity<>(errorResponse, HttpStatus.UNAUTHORIZED);
+    }
+
+    @ExceptionHandler(FeignException.class)
+    public ResponseEntity<ErrorResponse> handleFeignException(FeignException exception) {
+        int status = exception.status() >= 400 ? exception.status() : HttpStatus.INTERNAL_SERVER_ERROR.value();
+
+        if (exception.responseBody().isPresent()) {
+            try {
+                log.info("OpenFeign exception. {}", parseFeignException(exception));
+                var errorResponse = new ErrorResponse("File service error", "File uploading error." +
+                        " Please, try again later",
+                        HttpStatus.CONFLICT.value());
+                return new ResponseEntity<>(errorResponse, HttpStatus.valueOf(status));
+            } catch (Exception e) {
+                log.info("Parsing JSON error from feign exception", e);
+            }
+        }
+
+        var fallbackResponse = new ErrorResponse("Internal Server Error",
+                "An unexpected error occurred. Please try again later.",
+                HttpStatus.INTERNAL_SERVER_ERROR.value());
+
+        return new ResponseEntity<>(fallbackResponse, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
     @ExceptionHandler(TechprocessUpdatingException.class)
     public ResponseEntity<ErrorResponse> handleTechprocessUpdatingException(TechprocessUpdatingException exception) {
         log.warn("Exception: {}", exception.getMessage(), exception);
 
-        var errorResponse = new ErrorResponse("Techprocess updating exception: ", exception.getMessage(),
-                HttpStatus.BAD_REQUEST.value());
+        var errorResponse = new ErrorResponse("Techprocess updating exception: ", "Unable to update the " +
+                "resource. Please try again", HttpStatus.BAD_REQUEST.value());
 
         return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
     }
 
     @ExceptionHandler(FileUploadException.class)
     public ResponseEntity<ErrorResponse> handleFileUploadException(FileUploadException exception) {
-        log.error("Exception: {}", exception.getMessage(), exception);
+        log.warn("Exception: {}", exception.getMessage(), exception);
 
-        var errorResponse = new ErrorResponse("File upload error", exception.getMessage(),
-                exception.getHttpStatus());
+        var errorResponse = new ErrorResponse("File upload error", "Unable to upload the file." +
+                " Please check the file format and size", exception.getHttpStatus());
 
         return ResponseEntity.status(exception.getHttpStatus()).body(errorResponse);
     }
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleException(Exception exception) {
-        log.error("Unknown exception occurred: {}", exception.getMessage(), exception);
+        log.warn("Unknown exception occurred: {}", exception.getMessage(), exception);
 
         var errorResponse = new ErrorResponse("Internal Server Error",
                 "An unexpected error occurred. Please try again later.",
                 HttpStatus.INTERNAL_SERVER_ERROR.value());
 
         return new ResponseEntity<>(errorResponse, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    private ErrorResponse parseFeignException(FeignException exception) {
+        byte[] rawBody = exception.responseBody().get().array();
+
+        return objectMapper.readValue(rawBody, ErrorResponse.class);
     }
 }
