@@ -496,15 +496,14 @@ public class TechnologicalProcessService {
     }
 
     private void fillDeveloper(TechnologicalProcess techprocess) {
-        String username = jwtParser.getUsername();
-        String firstName = jwtParser.getFirstName();
-        String lastName = jwtParser.getLastName();
-        String fatherName = jwtParser.getFatherName();
+        var username = jwtParser.getUsername();
+        var firstName = jwtParser.getFirstName();
+        var lastName = jwtParser.getLastName();
+        var fatherName = jwtParser.getFatherName();
 
         if (username == null || username.isBlank() ||
                 firstName == null || firstName.isBlank() ||
-                lastName == null || lastName.isBlank() ||
-                fatherName == null || fatherName.isBlank()) {
+                lastName == null || lastName.isBlank()) {
             throw new TechprocessSavingException("Developer information is incomplete.");
         }
 
