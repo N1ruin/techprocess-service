@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.multipart.MultipartFile;
 
-@FeignClient(name = "file-service", path = "${file-service.path}}", url = "${file-service.url}",
+@FeignClient(name = "file-service", path = "${file-service.path}", url = "${file-service.url}",
         fallbackFactory = FileServiceClientFallbackFactory.class,
         configuration = FeignClientConfiguration.class)
 public interface FileServiceClient {

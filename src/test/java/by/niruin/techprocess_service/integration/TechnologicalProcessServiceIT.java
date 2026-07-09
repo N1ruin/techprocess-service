@@ -29,6 +29,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -1053,17 +1054,15 @@ class TechnologicalProcessServiceIT extends BaseIntegrationTest {
                 .andExpect(status().isNotFound());
     }
 
-    private RequestPostProcessor jwtClaims(String firstName,
-                                           String lastName,
-                                           String fatherName,
-                                           String username) {
+    private RequestPostProcessor jwtClaims(String firstName, String lastName, String fatherName, String username) {
         return SecurityMockMvcRequestPostProcessors.jwt()
                 .jwt(jwt -> {
                     jwt.claim("username", username);
                     jwt.claim("first_name", firstName);
                     jwt.claim("last_name", lastName);
                     jwt.claim("father_name", fatherName);
-                });
+                })
+                .authorities(new SimpleGrantedAuthority("ROLE_ENGINEER"));
     }
 
     private TechnologicalProcess createProcessInDb(TechnologicalProcessStatus status,

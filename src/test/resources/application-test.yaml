@@ -1,9 +1,52 @@
 spring:
+  cloud:
+    config:
+      enabled: false
+    discovery:
+      enabled: false
+
   security:
     oauth2:
       resourceserver:
         jwt:
           issuer-uri: http://localhost:8080/realms/test
+
+  data:
+    mongodb:
+      uri: mongodb://localhost:27017/test_db
+
+  redis:
+    host: localhost
+    port: 6379
+
+  cache:
+    type: none
+
+  kafka:
+    bootstrap-servers: localhost:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JacksonJsonSerializer
+      properties:
+        spring.json.trusted.packages: '*'
+
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
+
+file-service:
+  url: http://localhost:9999
+  path: /api/v1/file-service/files/images
+
+eureka:
+  client:
+    enabled: false
+
+scheduler:
+  outbox:
+    batch-size: 10
+    millis-delay: 5000
 
 logging:
   level:
@@ -11,11 +54,3 @@ logging:
     org.springframework.data.mongodb: DEBUG
     org.springframework.web: DEBUG
     org.springframework.test.web.servlet: DEBUG
-
-file-service:
-  url: http://localhost:9999
-
-scheduler:
-  outbox:
-    batch-size: 10
-    millis-delay: 5000

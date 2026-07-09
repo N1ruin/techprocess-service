@@ -14,6 +14,7 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -37,6 +38,7 @@ public class TechnologicalProcessController {
     }
 
     @PostMapping("/technological-processes")
+    @PreAuthorize("hasAnyRole('ENGINEER')")
     public ResponseEntity<CreateTechprocessResponse> create(@Valid @RequestBody CreateTechprocessRequest request) {
         var techprocess = technologicalProcessMapper.toTechnologicalProcess(request);
 
@@ -72,6 +74,7 @@ public class TechnologicalProcessController {
     }
 
     @PostMapping("/technological-processes/{full-number}/cancel")
+    @PreAuthorize("hasAnyRole('ENGINEER', 'HEAD')")
     public ResponseEntity<Void> cancel(@PathVariable("full-number") String fullNumber) {
         technologicalProcessService.cancel(fullNumber);
 
@@ -80,6 +83,7 @@ public class TechnologicalProcessController {
     }
 
     @PutMapping("/technological-processes/{full-number}")
+    @PreAuthorize("hasAnyRole('ENGINEER')")
     public ResponseEntity<TechnologicalProcessDto> update(@PathVariable("full-number") String fullNumber,
                                                           @Valid @RequestBody UpdateTechprocessRequest request) {
         var techprocess = technologicalProcessMapper.toTechnologicalProcess(request);
@@ -92,6 +96,7 @@ public class TechnologicalProcessController {
     }
 
     @PostMapping("/technological-processes/{full-number}/operations")
+    @PreAuthorize("hasAnyRole('ENGINEER')")
     public ResponseEntity<TechnologicalProcessDto> addOperation(@PathVariable("full-number") String fullNumber,
                                                                 @Valid @RequestBody AddOperationRequest request) {
         var operation = technologicalOperationMapper.toOperation(request);
@@ -103,6 +108,7 @@ public class TechnologicalProcessController {
     }
 
     @DeleteMapping("technological-processes/{full-number}/operations/{operation-number}")
+    @PreAuthorize("hasAnyRole('ENGINEER')")
     public ResponseEntity<Void> deleteOperation(@PathVariable("full-number") String fullNumber,
                                                 @PathVariable("operation-number") String operationNumber) {
         technologicalProcessService.deleteOperation(fullNumber, operationNumber);
@@ -113,6 +119,7 @@ public class TechnologicalProcessController {
 
     @PutMapping(path = "technological-processes/{full-number}/operations/{operation-number}",
             consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasAnyRole('ENGINEER')")
     public ResponseEntity<TechnologicalProcessDto> updateOperation(@PathVariable("full-number") String fullNumber,
                                                                    @PathVariable("operation-number") String operationNumber,
                                                                    @Valid @ModelAttribute UpdateOperationRequest request) {
@@ -127,6 +134,7 @@ public class TechnologicalProcessController {
     }
 
     @PostMapping("/technological-processes/{full-number}/send-to-review")
+    @PreAuthorize("hasAnyRole('ENGINEER')")
     public ResponseEntity<Void> sendToReview(@PathVariable("full-number") String fullNumber) {
         technologicalProcessService.sendToReview(fullNumber);
 
@@ -134,6 +142,7 @@ public class TechnologicalProcessController {
     }
 
     @PostMapping("/technological-processes/{full-number}/approve")
+    @PreAuthorize("hasAnyRole('ENGINEER')")
     public ResponseEntity<Void> approve(@PathVariable("full-number") String fullNumber) {
         technologicalProcessService.approve(fullNumber);
 
@@ -141,6 +150,7 @@ public class TechnologicalProcessController {
     }
 
     @PostMapping("/technological-processes/{full-number}/create-revision")
+    @PreAuthorize("hasAnyRole('ENGINEER')")
     public ResponseEntity<TechnologicalProcessDto> createRevision(@PathVariable("full-number") String processNumber) {
         var techprocess = technologicalProcessService.createRevision(processNumber);
 
@@ -150,6 +160,7 @@ public class TechnologicalProcessController {
     }
 
     @PostMapping("/technological-processes/{full-number}/review-comments")
+    @PreAuthorize("hasAnyRole('ENGINEER')")
     public ResponseEntity<Void> addCommentToTechprocess(@PathVariable("full-number") String processNumber,
                                                         @Valid @RequestBody AddCommentRequest request) {
         var comment = reviewCommentMapper.toComment(request);
@@ -160,6 +171,7 @@ public class TechnologicalProcessController {
     }
 
     @PostMapping("/technological-processes/{full-number}/operations/{operation-number}/review-comments")
+    @PreAuthorize("hasAnyRole('ENGINEER')")
     public ResponseEntity<Void> addCommentToOperation(@PathVariable("full-number") String processNumber,
                                                       @PathVariable("operation-number") String operationNumber,
                                                       @Valid @RequestBody AddCommentRequest request) {
@@ -171,6 +183,7 @@ public class TechnologicalProcessController {
     }
 
     @PostMapping("/technological-processes/{full-number}/return-for-revision")
+    @PreAuthorize("hasAnyRole('ENGINEER')")
     public ResponseEntity<Void> returnForRevision(@PathVariable("full-number") String processNumber) {
         technologicalProcessService.returnForRevision(processNumber);
 
@@ -178,6 +191,7 @@ public class TechnologicalProcessController {
     }
 
     @PostMapping("/technological-processes/{full-number}/comments/{comment-id}/resolve")
+    @PreAuthorize("hasAnyRole('ENGINEER')")
     public ResponseEntity<Void> resolveComment(@PathVariable("full-number") String processNumber,
                                                @PathVariable("comment-id") UUID commentId) {
         technologicalProcessService.resolveComment(processNumber, commentId);

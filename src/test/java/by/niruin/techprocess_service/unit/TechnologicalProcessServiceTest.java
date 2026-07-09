@@ -338,7 +338,7 @@ class TechnologicalProcessServiceTest {
 
         service.approve("12345");
 
-        verify(repository).approve(techprocess.getId(), TechnologicalProcessStatus.SET_UP, Instant.now());
+        verify(repository).approve(eq(techprocess.getId()), eq(TechnologicalProcessStatus.SET_UP), any());
     }
 
     @Test
