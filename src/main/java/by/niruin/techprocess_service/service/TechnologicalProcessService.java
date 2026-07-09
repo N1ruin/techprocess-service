@@ -8,8 +8,6 @@ import by.niruin.techprocess_service.kafka.EventPublisher;
 import by.niruin.techprocess_service.repository.TechnologicalProcessRepository;
 import by.niruin.techprocess_service.security.JwtParser;
 import by.niruin.techprocess_service.util.TechnologicalProcessFullNumberBuilder;
-import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
-import io.github.resilience4j.retry.annotation.Retry;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
@@ -498,10 +496,22 @@ public class TechnologicalProcessService {
     }
 
     private void fillDeveloper(TechnologicalProcess techprocess) {
-        techprocess.setDeveloperFirstName(jwtParser.getFirstName());
-        techprocess.setDeveloperLastName(jwtParser.getLastName());
-        techprocess.setDeveloperFatherName(jwtParser.getFatherName());
-        techprocess.setDeveloperUsername(jwtParser.getUsername());
+        String username = jwtParser.getUsername();
+        String firstName = jwtParser.getFirstName();
+        String lastName = jwtParser.getLastName();
+        String fatherName = jwtParser.getFatherName();
+
+        if (username == null || username.isBlank() ||
+                firstName == null || firstName.isBlank() ||
+                lastName == null || lastName.isBlank() ||
+                fatherName == null || fatherName.isBlank()) {
+            throw new TechprocessSavingException("Developer information is incomplete.");
+        }
+
+        techprocess.setDeveloperUsername(username);
+        techprocess.setDeveloperFirstName(firstName);
+        techprocess.setDeveloperLastName(lastName);
+        techprocess.setDeveloperFatherName(fatherName);
     }
 
     private void checkTechprocessOwner(TechnologicalProcess tp) {

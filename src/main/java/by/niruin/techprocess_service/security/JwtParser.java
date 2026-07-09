@@ -7,11 +7,11 @@ import org.springframework.stereotype.Component;
 @Component
 public class JwtParser {
     public String getFirstName() {
-        return getClaim("first_name");
+        return getClaim("preferred_username");
     }
 
     public String getLastName() {
-        return getClaim("last_name");
+        return getClaim("family_name");
     }
 
     public String getFatherName() {
