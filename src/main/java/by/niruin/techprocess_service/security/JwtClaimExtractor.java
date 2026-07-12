@@ -5,24 +5,12 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.stereotype.Component;
 
 @Component
-public class JwtParser {
-    public String getFirstName() {
-        return getClaim("preferred_username");
-    }
-
-    public String getLastName() {
-        return getClaim("family_name");
-    }
-
-    public String getFatherName() {
-        return getClaim("father_name");
-    }
-
+public class JwtClaimExtractor {
     public String getUsername() {
         return getClaim("username");
     }
 
-    public String getClaim(String claimName) {
+    private String getClaim(String claimName) {
         JwtAuthenticationToken auth = (JwtAuthenticationToken)
                 SecurityContextHolder.getContext().getAuthentication();
 

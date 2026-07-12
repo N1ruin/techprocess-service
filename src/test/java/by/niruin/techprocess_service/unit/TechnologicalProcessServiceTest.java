@@ -10,7 +10,7 @@ import by.niruin.techprocess_service.domain.enums.TechnologicalProcessWorkType;
 import by.niruin.techprocess_service.exception.*;
 import by.niruin.techprocess_service.kafka.EventPublisher;
 import by.niruin.techprocess_service.repository.TechnologicalProcessRepository;
-import by.niruin.techprocess_service.security.JwtParser;
+import by.niruin.techprocess_service.security.JwtClaimExtractor;
 import by.niruin.techprocess_service.util.TechnologicalProcessFullNumberBuilder;
 import by.niruin.techprocess_service.service.TechnologicalProcessService;
 import org.junit.jupiter.api.BeforeEach;
@@ -46,7 +46,7 @@ class TechnologicalProcessServiceTest {
     @Mock
     private EventPublisher eventPublisher;
     @Mock
-    private JwtParser jwtParser;
+    private JwtClaimExtractor jwtClaimExtractor;
     @Mock
     private MongoTemplate mongoTemplate;
     @Mock
@@ -58,10 +58,7 @@ class TechnologicalProcessServiceTest {
 
     @BeforeEach
     void setUp() {
-        lenient().when(jwtParser.getFirstName()).thenReturn("Евгений");
-        lenient().when(jwtParser.getLastName()).thenReturn("Лагун");
-        lenient().when(jwtParser.getFatherName()).thenReturn("Сергеевич");
-        lenient().when(jwtParser.getUsername()).thenReturn("lagun123");
+        lenient().when(jwtClaimExtractor.getUsername()).thenReturn("lagun123");
     }
 
     @Test
@@ -332,7 +329,7 @@ class TechnologicalProcessServiceTest {
         var techprocess = createTechprocessWithStatus(TechnologicalProcessStatus.IN_REVIEW);
         techprocess.setReviewerUsername("ivanov123");
 
-        when(jwtParser.getUsername()).thenReturn("ivanov123");
+        when(jwtClaimExtractor.getUsername()).thenReturn("ivanov123");
         when(repository.findFirstByFullNumberAndStatusOrderByRevisionDesc(anyString(), eq(TechnologicalProcessStatus.IN_REVIEW)))
                 .thenReturn(Optional.of(techprocess));
 
@@ -376,7 +373,7 @@ class TechnologicalProcessServiceTest {
         var comment = new ReviewComment();
         comment.setContent("Test comment");
 
-        when(jwtParser.getUsername()).thenReturn("ivanov123");
+        when(jwtClaimExtractor.getUsername()).thenReturn("ivanov123");
         when(repository.findByFullNumberAndStatus(anyString(), eq(TechnologicalProcessStatus.IN_REVIEW)))
                 .thenReturn(Optional.of(techprocess));
 

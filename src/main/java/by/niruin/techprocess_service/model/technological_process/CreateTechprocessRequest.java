@@ -17,6 +17,18 @@ public record CreateTechprocessRequest(
         String developerUsername,
         @NotNull
         @Pattern(regexp = "^[а-яА-ЯёЁa-zA-Z-]+$")
+        String developerFirstName,
+        @NotNull
+        @Pattern(regexp = "^[а-яА-ЯёЁa-zA-Z-]+$")
+        String developerLastName,
+        @NotNull
+        @Pattern(regexp = "^[а-яА-ЯёЁa-zA-Z-]+$")
+        String developerFatherName,
+        @NotNull
+        @Pattern(regexp = "^[a-zA-Z0-9]+$")
+        String reviewerUsername,
+        @NotNull
+        @Pattern(regexp = "^[а-яА-ЯёЁa-zA-Z-]+$")
         String reviewerFirstName,
         @NotNull
         @Pattern(regexp = "^[а-яА-ЯёЁa-zA-Z-]+$")

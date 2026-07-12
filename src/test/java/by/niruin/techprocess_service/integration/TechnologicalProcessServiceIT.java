@@ -1,6 +1,8 @@
 package by.niruin.techprocess_service.integration;
 
-import by.niruin.techprocess_service.domain.*;
+import by.niruin.techprocess_service.domain.ReviewComment;
+import by.niruin.techprocess_service.domain.Sketch;
+import by.niruin.techprocess_service.domain.TechnologicalProcess;
 import by.niruin.techprocess_service.domain.enums.BlankType;
 import by.niruin.techprocess_service.domain.enums.MaterialUnit;
 import by.niruin.techprocess_service.domain.enums.OperationType;
@@ -11,7 +13,6 @@ import by.niruin.techprocess_service.model.file.UploadFileResponse;
 import by.niruin.techprocess_service.model.technological_process.*;
 import by.niruin.techprocess_service.repository.TechnologicalProcessRepository;
 import by.niruin.techprocess_service.repository.TransactionOutboxRepository;
-import by.niruin.techprocess_service.security.JwtParser;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
 import com.github.tomakehurst.wiremock.junit5.WireMockTest;
@@ -35,6 +36,7 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockMultipartHttpServletRequestBuilder;
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.springframework.web.multipart.MultipartFile;
 import org.testcontainers.junit.jupiter.Container;
@@ -44,14 +46,12 @@ import tools.jackson.databind.ObjectMapper;
 import java.util.List;
 import java.util.UUID;
 
-import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static by.niruin.techprocess_service.domain.enums.TechnologicalProcessStatus.IN_DEVELOPMENT;
+import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static org.assertj.core.api.Assertions.assertThat;
-
-import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
-
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WireMockTest
 class TechnologicalProcessServiceIT extends BaseIntegrationTest {
@@ -70,8 +70,6 @@ class TechnologicalProcessServiceIT extends BaseIntegrationTest {
     private MockMvc mockMvc;
     @Autowired
     private ObjectMapper objectMapper;
-    @Autowired
-    private JwtParser jwtParser;
     @Autowired
     private TechnologicalOperationMapper technologicalOperationMapper;
     @Autowired
@@ -731,6 +729,10 @@ class TechnologicalProcessServiceIT extends BaseIntegrationTest {
                 "Вал-шестерня",
                 "12345",
                 "lagun123",
+                "Лагун",
+                "Евгений",
+                "Сергеевич",
+                "petrov123",
                 "Иванов",
                 "Иван",
                 "Иванович",
@@ -1110,6 +1112,10 @@ class TechnologicalProcessServiceIT extends BaseIntegrationTest {
                 "Вал-шестерня",
                 "12345",
                 "lagun123",
+                "Евгений",
+                "Лагун",
+                "Сергеевич",
+                "petrov123",
                 "Иванов",
                 "Иван",
                 "Иванович",
@@ -1125,10 +1131,14 @@ class TechnologicalProcessServiceIT extends BaseIntegrationTest {
                 "ДЕТ-1234567",
                 "Вал-шестерня",
                 "12345",
-                jwtParser.getUsername(),
-                jwtParser.getFirstName(),
-                jwtParser.getLastName(),
-                jwtParser.getFatherName(),
+                "lagun123",
+                "Евгений",
+                "Лагун",
+                "Сергеевич",
+                "lagun123",
+                "Евгений",
+                "Лагун",
+                "Сергеевич",
                 "003",
                 "ASSEMBLY",
                 "SINGLE",
@@ -1142,6 +1152,10 @@ class TechnologicalProcessServiceIT extends BaseIntegrationTest {
                 "AD!@31",
                 "fdsa",
                 "lagun123",
+                "lagu321",
+                "kekek234",
+                "pepepep54353",
+                "pepepep54353",
                 "Ivanov",
                 "ivan",
                 "Iv432",

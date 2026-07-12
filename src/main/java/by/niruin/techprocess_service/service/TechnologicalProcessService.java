@@ -6,7 +6,7 @@ import by.niruin.techprocess_service.domain.enums.TechnologicalProcessStatus;
 import by.niruin.techprocess_service.exception.*;
 import by.niruin.techprocess_service.kafka.EventPublisher;
 import by.niruin.techprocess_service.repository.TechnologicalProcessRepository;
-import by.niruin.techprocess_service.security.JwtParser;
+import by.niruin.techprocess_service.security.JwtClaimExtractor;
 import by.niruin.techprocess_service.util.TechnologicalProcessFullNumberBuilder;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.CachePut;
@@ -33,20 +33,20 @@ public class TechnologicalProcessService {
     private final TechnologicalProcessRepository repository;
     private final TechnologicalProcessFullNumberBuilder fullNumberBuilder;
     private final EventPublisher eventPublisher;
-    private final JwtParser jwtParser;
     private final MongoTemplate mongoTemplate;
+    private final JwtClaimExtractor jwtClaimExtractor;
     private final FileServiceClient fileServiceClient;
     private final TransactionTemplate transactionTemplate;
 
     public TechnologicalProcessService(TechnologicalProcessRepository repository,
                                        TechnologicalProcessFullNumberBuilder fullNumberBuilder,
-                                       EventPublisher eventPublisher, JwtParser jwtParser, MongoTemplate mongoTemplate,
+                                       EventPublisher eventPublisher, MongoTemplate mongoTemplate, JwtClaimExtractor jwtClaimExtractor,
                                        FileServiceClient fileServiceClient, TransactionTemplate transactionTemplate) {
         this.repository = repository;
         this.fullNumberBuilder = fullNumberBuilder;
         this.eventPublisher = eventPublisher;
-        this.jwtParser = jwtParser;
         this.mongoTemplate = mongoTemplate;
+        this.jwtClaimExtractor = jwtClaimExtractor;
         this.fileServiceClient = fileServiceClient;
         this.transactionTemplate = transactionTemplate;
     }
@@ -55,9 +55,10 @@ public class TechnologicalProcessService {
     @CachePut(value = "techprocess", key = "#result.fullNumber")
     public TechnologicalProcess save(TechnologicalProcess techprocess) {
         validateUniqueness(techprocess);
-        fillMetadata(techprocess);
-        fillDeveloper(techprocess);
+
+        techprocess.setDeveloperUsername(jwtClaimExtractor.getUsername());
         checkSelfReview(techprocess);
+        fillMetadata(techprocess);
 
         var saved = repository.save(techprocess);
         eventPublisher.publishTechprocessCreatedEvent(saved);
@@ -74,7 +75,7 @@ public class TechnologicalProcessService {
 
         if (existing.getStatus() != TechnologicalProcessStatus.SET_UP) {
             throw new TechprocessCancellationException(
-                    "It is not possible to cancel the technological process in the status of %s"
+                    "Отменить технологический процесс в статусе %s невозможно."
                             .formatted(existing.getStatus().name()));
         }
 
@@ -88,7 +89,7 @@ public class TechnologicalProcessService {
     public TechnologicalProcess getInStatusSetUpByNumber(String fullNumber) {
         return repository.findFirstByFullNumberAndStatusOrderByRevisionDesc(fullNumber, TechnologicalProcessStatus.SET_UP)
                 .orElseThrow(() -> new EntityNotFoundException(
-                        "Techprocess with number %s not found".formatted(fullNumber)));
+                        "Техпроцесс с номером %s не найден".formatted(fullNumber)));
     }
 
     @Transactional(readOnly = true)
@@ -96,7 +97,7 @@ public class TechnologicalProcessService {
     public TechnologicalProcess getByNumberAndRevision(String fullNumber, Integer revision) {
         return repository.findByFullNumberAndRevision(fullNumber, revision)
                 .orElseThrow(() -> new EntityNotFoundException(
-                        "Techprocess with number %s and revision %d not found".formatted(fullNumber, revision)));
+                        "Техпроцесс с номером %s и ревизией %d не найден".formatted(fullNumber, revision)));
     }
 
     @Transactional(readOnly = true)
@@ -156,7 +157,7 @@ public class TechnologicalProcessService {
                 .anyMatch(o -> o.getNumber().equals(operation.getNumber()));
 
         if (isOperationNumberExist) {
-            throw new EntityAlreadyExistException("Operation with number %s exist in techprocess %s"
+            throw new EntityAlreadyExistException("Операция с номером %s существует в техпроцессе с номером %s"
                     .formatted(operation.getNumber(), existingTechprocess.getFullNumber()));
         }
 
@@ -175,7 +176,7 @@ public class TechnologicalProcessService {
         var hasOperation = existingProcess.getOperations().stream()
                 .anyMatch(op -> op.getNumber().equals(operationNumber));
         if (!hasOperation) {
-            throw new EntityNotFoundException("Operation with number %s not found".formatted(operationNumber));
+            throw new EntityNotFoundException("Операция с номером %s не найдена".formatted(operationNumber));
         }
 
         checkTechprocessOwner(existingProcess);
@@ -460,7 +461,7 @@ public class TechnologicalProcessService {
     private void checkIsNumberExist(String organizationType, String workType, String archiveNumber) {
         if (repository.existsByOrganizationTypeAndWorkTypeAndArchiveNumber(organizationType, workType, archiveNumber)) {
             throw new EntityAlreadyExistException(
-                    "Technological process with organization type %s, work type %s, archive number %s existing"
+                    "Техпроцесс с типом организации %s, видом работ %s, архивным номером %s существует"
                             .formatted(organizationType, workType, archiveNumber));
         }
     }
@@ -470,7 +471,7 @@ public class TechnologicalProcessService {
         if (repository.existsByOrganizationTypeAndWorkTypeAndArchiveNumberAndWorkshopCode(
                 organizationType, workType, archiveNumber, workshopCode)) {
             throw new EntityAlreadyExistException(
-                    "Technological process with organization type %s, work type %s, archive number %s, workshop code %s existing"
+                    "Техпроцесс с типом организации %s, видом работ %s, архивным номером %s, кодом цеха %s существует"
                             .formatted(organizationType, workType, archiveNumber, workshopCode));
         }
     }
@@ -483,8 +484,11 @@ public class TechnologicalProcessService {
     }
 
     private void checkSelfReview(TechnologicalProcess techprocess) {
-        if (techprocess.getDeveloperUsername().equals(techprocess.getReviewerUsername())) {
-            throw new TechprocessSavingException("Нельзя назначить на проверяющего самого себя");
+        var developerUsername = techprocess.getDeveloperUsername();
+        var reviewerUsername = techprocess.getReviewerUsername();
+
+        if (developerUsername != null && developerUsername.equals(reviewerUsername)) {
+            throw new TechprocessSavingException("Нельзя назначить самого себя проверяющим");
         }
     }
 
@@ -495,32 +499,14 @@ public class TechnologicalProcessService {
                 techprocess.getOrganizationType(), techprocess.getWorkType(), techprocess.getArchiveNumber()));
     }
 
-    private void fillDeveloper(TechnologicalProcess techprocess) {
-        var username = jwtParser.getUsername();
-        var firstName = jwtParser.getFirstName();
-        var lastName = jwtParser.getLastName();
-        var fatherName = jwtParser.getFatherName();
-
-        if (username == null || username.isBlank() ||
-                firstName == null || firstName.isBlank() ||
-                lastName == null || lastName.isBlank()) {
-            throw new TechprocessSavingException("Developer information is incomplete.");
-        }
-
-        techprocess.setDeveloperUsername(username);
-        techprocess.setDeveloperFirstName(firstName);
-        techprocess.setDeveloperLastName(lastName);
-        techprocess.setDeveloperFatherName(fatherName);
-    }
-
     private void checkTechprocessOwner(TechnologicalProcess tp) {
-        if (!tp.getDeveloperUsername().equals(jwtParser.getUsername())) {
+        if (!tp.getDeveloperUsername().equals(jwtClaimExtractor.getUsername())) {
             throw new AuthorizationException("Нельзя выполнить операцию не являясь владельцем техпроцесса");
         }
     }
 
     private void checkTechprocessReviewer(TechnologicalProcess tp) {
-        if (!tp.getReviewerUsername().equals(jwtParser.getUsername())) {
+        if (!tp.getReviewerUsername().equals(jwtClaimExtractor.getUsername())) {
             throw new AuthorizationException("Нет прав для согласования техпроцесса");
         }
     }
